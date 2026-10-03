@@ -1,6 +1,13 @@
-# Trạm Dashboard
+# Điều hành chất lượng
 
 Web app một trang: tải file dữ liệu lên là có dashboard ngay. Mọi xử lý diễn ra trong trình duyệt, file không được gửi lên máy chủ nào.
+
+## Bố cục
+
+- Máy tính, laptop, máy tính bảng (rộng từ 768px): cột điều hướng hẹp bên trái, phần nội dung lớn bên phải.
+- Điện thoại: điều hướng thu thành dải tab cuộn ngang phía trên.
+- Mỗi mục điều hướng là một trang tính (sheet) trong file Excel, hoặc một file CSV/JSON. Chọn được nhiều file một lúc.
+- Mỗi mục gồm: hàng bộ lọc (tối đa 6 cột nhóm + Thời gian), 4 ô chỉ số, biểu đồ tròn cơ cấu, biểu đồ cột theo thời gian (hoặc so sánh nhóm nếu không có cột ngày), bảng chi tiết.
 
 ## Định dạng hỗ trợ
 
