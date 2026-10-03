@@ -2170,7 +2170,6 @@
   function centerOf(node) { var b = node.getBoundingClientRect(); return [b.left + b.width / 2, b.top]; }
 
   var ICONS = {
-    refresh: '<path d="M13 3v3.5H9.5M3 13V9.5h3.5M12.6 6.5A5 5 0 0 0 3.6 5.2M3.4 9.5a5 5 0 0 0 9 1.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
     report: '<path d="M4 2h6l3 3v9H4zM10 2v3h3M6.5 8.5h4M6.5 11h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>'
   };
   function navButton(label, opts) {
@@ -2203,7 +2202,6 @@
       });
     }
     nav.appendChild(el('div', 'nav-section', 'Quản lý'));
-    nav.appendChild(navButton('Cập nhật dữ liệu', { icon: 'refresh', current: VIEW.mode === 'update', onClick: doUpdate }));
     nav.appendChild(navButton('Tạo báo cáo', {
       icon: 'report', tag: 'bước sau', current: VIEW.mode === 'report',
       onClick: function () { VIEW = { mode: 'report' }; showView('report'); renderNav(); }
