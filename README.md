@@ -4,44 +4,32 @@ Web app một trang để theo dõi chất lượng các bưu cục. Mỗi ngày
 
 ## Cách dùng
 
-1. Mở `index.html` bằng **Microsoft Edge hoặc Google Chrome trên máy tính** (Firefox, Safari và trình duyệt trên điện thoại/máy tính bảng chưa hỗ trợ ghi thư mục).
-2. Bấm **Chọn thư mục lưu dữ liệu**, chọn một thư mục riêng, ví dụ `D:\DieuHanhChatLuong` hoặc một thư mục trong OneDrive để có bản sao trên cloud. Trình duyệt hỏi quyền đọc ghi, bấm cho phép.
-3. Bấm **Tải dữ liệu**, chọn file xuất từ hệ thống (Excel, CSV hoặc JSON, chọn được nhiều file một lúc).
-4. Kiểm tra màn hình **Kiểm tra trước khi lưu** rồi bấm Lưu.
-
-Lần sau mở app, trình duyệt nhớ thư mục; chỉ cần bấm "Mở lại thư mục" để cấp lại quyền.
-
-## Cách lưu trên đĩa
+1. Tạo một thư mục dữ liệu với 4 thư mục con, mỗi ngày bỏ tệp tải từ hệ thống vào đúng thư mục, tên tệp có ngày:
 
 ```
-<thư mục đã chọn>/
-├─ cau-hinh.json        mẫu nhận diện từng sheet: vai trò từng cột, cách tính, tỷ lệ
-├─ danh-muc.json        danh sách các ngày đã lưu
-├─ goc/2026-09/         file gốc, giữ nguyên: "2026-09-29 - BaoCaoNgay_29-09-2026.xlsx"
-└─ du-lieu/2026-09/     bản đã chuẩn hóa theo ngày: "2026-09-29.json"
+<Thư mục dữ liệu>/
+├─ TonPhat/          TonPhat_29-09-2026.xlsx, ...   danh sách bưu gửi tồn phát
+├─ TonThu/           TonThu_29-09-2026.xlsx, ...    danh sách yêu cầu tồn thu
+├─ PhatThanhCong/    PTC_29092026.xlsx, ...         bưu gửi phát thành công trong ngày
+└─ ThuThanhCong/     TTC_2026-09-29.xlsx, ...       yêu cầu thu thành công trong ngày
 ```
 
-- Tải lại cùng một ngày thì ghi đè ngày đó (file gốc cũ của ngày đó bị thay).
-- `du-lieu/*.json` là văn bản thường, mỗi dòng dữ liệu một dòng, mở được bằng Notepad.
-- Mất `danh-muc.json` thì vào **Dữ liệu đã lưu → Quét lại thư mục** để dựng lại từ `du-lieu/`.
+   Trong mỗi thư mục con có thể chia thêm thư mục (ví dụ theo tháng). Thư mục con khác tên cũng được đọc, mỗi thư mục là một mục ở cột trái.
+2. Mở `index.html` bằng Edge hoặc Chrome trên máy tính, bấm **Liên kết thư mục dữ liệu**, chọn thư mục trên. Trình duyệt nhớ thư mục này.
+3. Mỗi lần có tệp mới, bấm **Cập nhật dữ liệu**. App đọc lại thư mục, chỉ đọc tệp mới hoặc vừa sửa.
 
-## Cách app hiểu file
+App chỉ đọc, không sửa, không di chuyển, không xóa tệp của bạn. Trên điện thoại, máy tính bảng, Firefox và Safari, trình duyệt không cho nhớ thư mục: mỗi lần cập nhật phải chọn lại thư mục hoặc các tệp; dữ liệu đã đọc vẫn được nhớ trên thiết bị đó.
 
-- **Ngày dữ liệu**: lấy từ tên tệp (`29-09-2026`, `2026-09-29`, `29092026`), nếu không có thì lấy ngày lớn nhất trong các cột ngày, sửa được trước khi lưu.
-- **Mỗi sheet** là một mục ở cột trái, nhận theo tên sheet. File CSV/JSON dùng tên tệp đã bỏ phần ngày.
-- **Kiểu sheet**: số phát sinh trong ngày, hoặc số dư tại thời điểm (danh sách tồn).
-- **Vai trò cột**:
+## Cách app hiểu và nối các tệp
 
-| Vai trò | Khi xem nhiều ngày |
-|---|---|
-| Chỉ tiêu cộng dồn | Tổng các ngày, kèm trung bình/ngày |
-| Chỉ tiêu số dư (tồn) | Số của ngày cuối kỳ, kèm bình quân/ngày. Không cộng dồn |
-| Chỉ tiêu tính trung bình | Trung bình trên các dòng, kèm giá trị lớn nhất |
-| Tỷ lệ (tự khai báo) | Tổng tử số / tổng mẫu số của cả kỳ × 100 |
-| Bưu cục | Đơn vị để tổng hợp và lọc |
-| Nhóm để lọc, Mã định danh, Ngày giờ, Ghi chú, Bỏ qua | Lọc, đếm, hiển thị hoặc không lưu |
-
-Lần đầu gặp một sheet, app đoán vai trò theo kiểu dữ liệu và tên cột. Bạn sửa và lưu thì mẫu được ghi vào `cau-hinh.json`; các ngày sau tự áp dụng và báo nếu file thiếu cột hoặc có cột mới.
+- **Ngày của tệp**: lấy từ tên tệp (`29-09-2026`, `2026-09-29`, `29092026`); không có thì lấy ngày lớn nhất trong dữ liệu, cuối cùng là ngày sửa tệp.
+- **Nhiều tệp cùng ngày** trong một thư mục: gộp lại, trùng mã thì giữ dòng của tệp mới nhất.
+- **Nhiều sheet trong một tệp**: các sheet có cùng cấu trúc với thư mục được gộp; sheet khác cấu trúc (ví dụ sheet tổng hợp) bị bỏ qua và được liệt kê ở trang Cập nhật dữ liệu.
+- **Vai trò cột** (cộng dồn, số dư, trung bình, bưu cục, nhóm lọc, mã...) được app đoán và có thể sửa ở **Cập nhật dữ liệu → Thiết lập**.
+- **Liên kết theo mã**: cùng một mã bưu gửi (mã yêu cầu) xuất hiện ở nhiều thư mục thì dùng chung thông tin. Tệp thiếu cột Bưu cục, Dịch vụ, Lý do tồn... được điền từ thư mục khác; cột được điền có chữ "(liên kết)".
+- **Tổng quan** tự tính: mỗi bưu cục mỗi ngày đếm số mã trong từng thư mục. Tồn là số dư (xem nhiều ngày lấy cuối kỳ), thành công là cộng dồn. Tỷ lệ thành công một ngày = thành công / (thành công + tồn); khi xem nhiều ngày chọn được cách tính phần tồn (cộng từng ngày hoặc chỉ cuối kỳ). **Đây là giả định, cần đối chiếu với công thức của đơn vị.**
+- **Đối soát** (trên trang Tổng quan): mã vừa tồn vừa thành công cùng ngày; mã ra khỏi danh sách tồn mà không thấy thành công; dòng không xác định được bưu cục.
+- Những gì app nhớ trên máy (thư mục đã liên kết, thiết lập, tệp đã đọc) nằm trong bộ nhớ của trình duyệt, không ghi vào thư mục dữ liệu.
 
 ## Xem theo kỳ
 

@@ -333,7 +333,11 @@
     border-radius: 8px;
   }
   .tree .cmt { color: var(--muted); }
-  pre.json { max-height: 320px; overflow: auto; }
+  .tree-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 12px; padding: 0 16px 16px; }
+  .tree-grid > div { display: grid; gap: 6px; min-width: 0; align-content: start; }
+  .src-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; font-size: 16px; }
+  .plain-list { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 13.5px; color: var(--muted); max-width: 90ch; }
+  #progressBox { font-family: var(--font-mono); font-size: 12.5px; overflow-wrap: anywhere; }
 
   .tip { position: fixed; z-index: 20; pointer-events: none; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); border-radius: 8px; padding: 8px 10px; font-size: 13px; max-width: 260px; display: grid; gap: 2px; }
   .tip-value { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 6px; }
@@ -363,20 +367,20 @@
       <div class="source-meta" id="srcMeta"></div>
       <div class="source-actions">
         <button class="btn btn-primary" id="pickBtn" type="button">
-          <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 11V2.5M4.5 6 8 2.5 11.5 6M2.5 11v2.5h11V11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Tải dữ liệu
-        </button>
+          <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 3v3.5H9.5M3 13V9.5h3.5M12.6 6.5A5 5 0 0 0 3.6 5.2M3.4 9.5a5 5 0 0 0 9 1.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Cập nhật dữ liệu</button>
       </div>
       <input type="file" id="fileInput" accept=".csv,.tsv,.txt,.xlsx,.xlsm,.xls,.ods,.json" multiple hidden>
+      <input type="file" id="dirInput" webkitdirectory multiple hidden>
     </div>
   </aside>
 
   <main class="content" id="app">
     <div class="error" id="errorBox" role="alert" hidden></div>
+    <div class="notice" id="progressBox" role="status" hidden></div>
     <div class="notice" id="noticeBox" role="status" hidden></div>
     <div class="banner" id="sampleBanner" hidden>
-      <span><strong>Đang xem dữ liệu mẫu.</strong> Số liệu minh họa, chưa lưu vào đâu. Chọn thư mục để bắt đầu lưu dữ liệu thật.</span>
-      <button class="btn" type="button" data-act="choose-folder">Chọn thư mục lưu dữ liệu</button>
+      <span><strong>Đang xem dữ liệu mẫu.</strong> Số liệu minh họa của 4 thư mục TonPhat, TonThu, PhatThanhCong, ThuThanhCong. Liên kết thư mục dữ liệu của bạn để xem số liệu thật.</span>
+      <button class="btn" type="button" data-act="link-folder">Liên kết thư mục dữ liệu</button>
     </div>
 
     <!-- Sheet view -->
@@ -450,6 +454,21 @@
         <p class="card-note" style="padding: 10px 16px" id="sumNote"></p>
       </section>
 
+      <section class="card table-card" id="recCard" hidden>
+        <div class="card-head">
+          <h3 class="card-title">Đối soát giữa các thư mục</h3>
+          <span class="card-note" id="recNote"></span>
+        </div>
+        <p class="card-note" style="padding: 0 16px 10px">So khớp theo mã bưu gửi (mã yêu cầu) giữa thư mục tồn và thư mục thành công. Số khác 0 là chỗ cần kiểm tra lại.</p>
+        <div class="table-scroll"><table id="recTable"><thead></thead><tbody></tbody></table></div>
+        <p class="card-note" id="recReason" style="padding: 8px 16px" hidden></p>
+        <div class="card-head" style="padding: 12px 16px 8px">
+          <label class="field"><span>Danh sách mã</span><select id="recSel"></select></label>
+          <span class="card-note" id="recCount"></span>
+        </div>
+        <div class="table-scroll"><table id="recList"><thead></thead><tbody></tbody></table></div>
+      </section>
+
       <details class="card fold" id="detailFold">
         <summary id="detailSummary">Dữ liệu chi tiết</summary>
         <div class="card-head" style="padding: 0 16px 10px">
@@ -466,52 +485,36 @@
       </details>
     </section>
 
-    <!-- Import review -->
-    <section class="view" id="viewImport" hidden>
+    <!-- Update -->
+    <section class="view" id="viewUpdate" hidden>
       <div class="page-head">
-        <h2 class="page-title">Kiểm tra trước khi lưu</h2>
-        <span class="page-meta" id="importMeta"></span>
+        <h2 class="page-title">Cập nhật dữ liệu</h2>
+        <span class="page-meta" id="updMeta"></span>
       </div>
-      <p class="lead">App đã đọc file và đoán ý nghĩa từng cột như bên dưới. Kiểm tra ngày dữ liệu và vai trò các cột rồi bấm Lưu. Những gì bạn chọn ở đây được ghi thành mẫu, các ngày sau có cùng sheet sẽ tự áp dụng.</p>
-      <section class="card table-card">
-        <div class="card-head"><h3 class="card-title">Tệp và ngày dữ liệu</h3></div>
-        <div class="table-scroll"><table id="importFiles"><thead></thead><tbody></tbody></table></div>
-      </section>
-      <div id="importSheets" class="view"></div>
-      <div class="action-bar">
-        <button class="btn btn-primary" type="button" id="importSave">Lưu</button>
-        <button class="btn" type="button" id="importCancel">Hủy</button>
-        <span class="row-count" id="importHint"></span>
-      </div>
-    </section>
-
-    <!-- Storage -->
-    <section class="view" id="viewStorage" hidden>
-      <div class="page-head">
-        <h2 class="page-title">Dữ liệu đã lưu</h2>
-        <span class="page-meta" id="storageMeta"></span>
-      </div>
-      <ol class="steps" id="howSteps">
-        <li><span class="n">1</span><strong>Chọn thư mục lưu</strong>Tạo một thư mục riêng, ví dụ D:\DieuHanhChatLuong hoặc trong OneDrive để có bản sao trên cloud. Chỉ cần chọn một lần.</li>
-        <li><span class="n">2</span><strong>Tải file mỗi ngày</strong>Xuất file từ hệ thống, bấm Tải dữ liệu. App giữ nguyên file gốc và lưu thêm một bản đã chuẩn hóa theo ngày.</li>
-        <li><span class="n">3</span><strong>Chọn kỳ để xem</strong>Ngày, tuần, tháng, quý hoặc lũy kế năm. App đọc các ngày trong kỳ và tính lại theo quy tắc của từng cột.</li>
-      </ol>
-      <div class="action-bar" id="storageActions"></div>
-      <section class="card table-card">
-        <div class="card-head"><h3 class="card-title">Cấu trúc thư mục</h3></div>
-        <div style="padding: 0 16px 16px"><pre class="tree" id="treeBox"></pre></div>
-      </section>
+      <section class="card card-pad" id="updSource"></section>
       <section class="card table-card">
         <div class="card-head">
-          <h3 class="card-title">Các ngày đã lưu</h3>
-          <span class="card-note" id="missingNote"></span>
+          <h3 class="card-title">Các thư mục dữ liệu</h3>
+          <span class="card-note" id="updNote"></span>
         </div>
-        <div class="table-scroll"><table id="daysTable"><thead></thead><tbody></tbody></table></div>
+        <div class="table-scroll"><table id="updTable"><thead></thead><tbody></tbody></table></div>
       </section>
-      <details class="card fold">
-        <summary>Xem nội dung một tệp dữ liệu ngày (định dạng JSON)</summary>
-        <div style="padding: 0 16px 16px"><pre class="tree json" id="jsonBox"></pre></div>
-      </details>
+      <div id="updSetup" class="view"></div>
+      <section class="card card-pad">
+        <h3 class="card-title">Tổng quan được tính thế nào</h3>
+        <ul class="plain-list" id="ovRules"></ul>
+      </section>
+      <section class="card table-card">
+        <div class="card-head"><h3 class="card-title">Cấu trúc thư mục</h3></div>
+        <div class="tree-grid">
+          <div><p class="card-note">Cách đặt thư mục</p><pre class="tree" id="treeExpected"></pre></div>
+          <div><p class="card-note">App đang thấy</p><pre class="tree" id="treeActual"></pre></div>
+        </div>
+      </section>
+      <section class="card table-card" id="updIssues">
+        <div class="card-head"><h3 class="card-title">Tệp cần chú ý</h3></div>
+        <div class="table-scroll"><table id="issuesTable"><thead></thead><tbody></tbody></table></div>
+      </section>
     </section>
 
     <!-- Report (next step) -->
@@ -557,7 +560,7 @@
     return String(v);
   }
   function keyOf(v) { return v == null ? EMPTY : (v instanceof Date ? fmtDate(v) : String(v)); }
-  function labelOf(k) { return k === EMPTY ? '(trống)' : k; }
+  function labelOf(k) { return k === EMPTY ? '(chưa rõ)' : k; }
 
   /* ---------- Parsing helpers ---------- */
   function cleanNum(s) {
@@ -894,218 +897,6 @@
   }
 
   /* ================================================================
-     Storage: a folder on this computer, or memory (sample / temporary)
-     ================================================================ */
-  function splitPath(p) { return p.split('/').filter(Boolean); }
-
-  function FolderStore(dir) { this.dir = dir; this.kind = 'folder'; this.name = dir.name; }
-  FolderStore.prototype._dir = async function (parts, create) {
-    var d = this.dir;
-    for (var i = 0; i < parts.length; i++) d = await d.getDirectoryHandle(parts[i], { create: !!create });
-    return d;
-  };
-  FolderStore.prototype.read = async function (path) {
-    var ps = splitPath(path);
-    try {
-      var d = await this._dir(ps.slice(0, -1));
-      var fh = await d.getFileHandle(ps[ps.length - 1]);
-      return await (await fh.getFile()).text();
-    } catch (e) {
-      if (e && (e.name === 'NotFoundError' || e.name === 'TypeMismatchError')) return null;
-      throw e;
-    }
-  };
-  FolderStore.prototype.write = async function (path, data) {
-    var ps = splitPath(path);
-    var d = await this._dir(ps.slice(0, -1), true);
-    var fh = await d.getFileHandle(ps[ps.length - 1], { create: true });
-    var w = await fh.createWritable();
-    await w.write(data);
-    await w.close();
-  };
-  FolderStore.prototype.remove = async function (path) {
-    var ps = splitPath(path);
-    try {
-      var d = await this._dir(ps.slice(0, -1));
-      await d.removeEntry(ps[ps.length - 1]);
-    } catch (e) { if (!e || e.name !== 'NotFoundError') throw e; }
-  };
-  FolderStore.prototype.list = async function (path) {
-    try {
-      var d = await this._dir(splitPath(path || ''));
-      var out = [];
-      for await (var entry of d.values()) out.push({ name: entry.name, kind: entry.kind });
-      return out.sort(function (a, b) { return a.name.localeCompare(b.name); });
-    } catch (e) { return []; }
-  };
-
-  function MemoryStore(name) { this.kind = 'memory'; this.name = name; this.files = new Map(); }
-  MemoryStore.prototype.read = async function (path) {
-    var v = this.files.get(path);
-    return typeof v === 'string' ? v : null;
-  };
-  MemoryStore.prototype.write = async function (path, data) { this.files.set(path, data); };
-  MemoryStore.prototype.remove = async function (path) { this.files.delete(path); };
-  MemoryStore.prototype.list = async function (path) {
-    var prefix = path ? path.replace(/\/?$/, '/') : '';
-    var seen = new Map();
-    this.files.forEach(function (_, key) {
-      if (key.indexOf(prefix) !== 0) return;
-      var parts = key.slice(prefix.length).split('/');
-      if (!seen.has(parts[0])) seen.set(parts[0], parts.length > 1 ? 'directory' : 'file');
-    });
-    return Array.from(seen.entries()).map(function (e) { return { name: e[0], kind: e[1] }; })
-      .sort(function (a, b) { return a.name.localeCompare(b.name); });
-  };
-
-  /* Remember the chosen folder between visits (the browser keeps the handle, not the files) */
-  function idb() {
-    return new Promise(function (res, rej) {
-      var r = indexedDB.open('dhcl', 1);
-      r.onupgradeneeded = function () { r.result.createObjectStore('kv'); };
-      r.onsuccess = function () { res(r.result); };
-      r.onerror = function () { rej(r.error); };
-    });
-  }
-  async function kvGet(k) {
-    try {
-      var db = await idb();
-      return await new Promise(function (res) {
-        var q = db.transaction('kv').objectStore('kv').get(k);
-        q.onsuccess = function () { res(q.result || null); };
-        q.onerror = function () { res(null); };
-      });
-    } catch (e) { return null; }
-  }
-  async function kvSet(k, v) {
-    try {
-      var db = await idb();
-      await new Promise(function (res) {
-        var tx = db.transaction('kv', 'readwrite');
-        tx.objectStore('kv').put(v, k);
-        tx.oncomplete = res; tx.onerror = res;
-      });
-    } catch (e) { /* not critical */ }
-  }
-
-  /* ================================================================
-     Data layer: config (templates), index (saved days), day files
-     ================================================================ */
-  var CONFIG_FILE = 'cau-hinh.json';
-  var INDEX_FILE = 'danh-muc.json';
-  var DB = { store: null, config: null, index: null, cache: new Map() };
-
-  function emptyConfig() {
-    return {
-      phienBan: 1,
-      ghiChu: 'Mẫu nhận diện file của app Điều hành chất lượng. Sửa trong app, không nên sửa tay.',
-      tuyChonBang: { tb: true, max: false, min: false, prev: false, delta: true },
-      sheets: {}
-    };
-  }
-  function emptyIndex() { return { phienBan: 1, ghiChu: 'Danh sách các ngày đã lưu. App tự cập nhật.', ngay: {} }; }
-  function dayPath(k) { return 'du-lieu/' + k.slice(0, 7) + '/' + k + '.json'; }
-  function safeName(n) { return String(n).replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').slice(0, 120); }
-  function dayKeys() { return Object.keys(DB.index.ngay).sort(); }
-  function latestDate() { var ks = dayKeys(); return ks.length ? fromKey(ks[ks.length - 1]) : null; }
-  function sheetNames() {
-    var s = DB.config.sheets;
-    return Object.keys(s).sort(function (a, b) { return (s[a].thuTu || 0) - (s[b].thuTu || 0); });
-  }
-
-  async function openStore(store) {
-    var cfg = await store.read(CONFIG_FILE);
-    var idx = await store.read(INDEX_FILE);
-    DB.store = store;
-    DB.cache = new Map();
-    DB.config = cfg ? JSON.parse(cfg) : emptyConfig();
-    DB.config.tuyChonBang = Object.assign(emptyConfig().tuyChonBang, DB.config.tuyChonBang || {});
-    DB.config.sheets = DB.config.sheets || {};
-    DB.index = idx ? JSON.parse(idx) : emptyIndex();
-    if (!idx && store.kind === 'folder') await rebuildIndex();
-  }
-
-  async function rebuildIndex() {
-    var idx = emptyIndex();
-    var months = await DB.store.list('du-lieu');
-    for (var i = 0; i < months.length; i++) {
-      if (months[i].kind !== 'directory') continue;
-      var files = await DB.store.list('du-lieu/' + months[i].name);
-      for (var f = 0; f < files.length; f++) {
-        if (!/^\d{4}-\d{2}-\d{2}\.json$/.test(files[f].name)) continue;
-        try {
-          var day = JSON.parse(await DB.store.read('du-lieu/' + months[i].name + '/' + files[f].name));
-          var counts = {};
-          Object.keys(day.sheets || {}).forEach(function (n) { counts[n] = day.sheets[n].dong.length; });
-          idx.ngay[day.ngayDuLieu] = { tepGoc: day.duongDanGoc || null, tenTepGoc: day.tepGoc || null, luuLuc: day.luuLuc || null, sheets: counts };
-        } catch (e) { /* skip unreadable file */ }
-      }
-    }
-    DB.index = idx;
-    DB.cache = new Map();
-    await saveIndex();
-  }
-
-  async function saveConfig() { await DB.store.write(CONFIG_FILE, JSON.stringify(DB.config, null, 2)); }
-  async function saveIndex() {
-    var sorted = {};
-    dayKeys().forEach(function (k) { sorted[k] = DB.index.ngay[k]; });
-    DB.index.ngay = sorted;
-    await DB.store.write(INDEX_FILE, JSON.stringify(DB.index, null, 2));
-  }
-
-  function dayToText(day) {
-    var names = Object.keys(day.sheets);
-    return '{\n' +
-      ' "ngayDuLieu": ' + JSON.stringify(day.ngayDuLieu) + ',\n' +
-      ' "tepGoc": ' + JSON.stringify(day.tepGoc) + ',\n' +
-      ' "duongDanGoc": ' + JSON.stringify(day.duongDanGoc) + ',\n' +
-      ' "luuLuc": ' + JSON.stringify(day.luuLuc) + ',\n' +
-      ' "sheets": {\n' +
-      names.map(function (n) {
-        var sh = day.sheets[n];
-        return '  ' + JSON.stringify(n) + ': {\n   "cot": ' + JSON.stringify(sh.cot) + ',\n   "dong": [\n' +
-          sh.dong.map(function (r) { return '    ' + JSON.stringify(r); }).join(',\n') + '\n   ]\n  }';
-      }).join(',\n') +
-      '\n }\n}\n';
-  }
-
-  async function loadDay(k) {
-    if (DB.cache.has(k)) return DB.cache.get(k);
-    var text = await DB.store.read(dayPath(k));
-    var day = text ? JSON.parse(text) : null;
-    DB.cache.set(k, day);
-    return day;
-  }
-
-  async function saveDay(k, fileName, blob, sheets) {
-    var old = DB.index.ngay[k];
-    var goc = null;
-    if (blob) {
-      goc = 'goc/' + k.slice(0, 7) + '/' + k + ' - ' + safeName(fileName);
-      if (old && old.tepGoc && old.tepGoc !== goc) await DB.store.remove(old.tepGoc);
-      await DB.store.write(goc, blob);
-    }
-    var now = new Date();
-    var day = { ngayDuLieu: k, tepGoc: fileName, duongDanGoc: goc, luuLuc: toISOLocal(now) + ':' + pad(now.getSeconds()), sheets: sheets };
-    await DB.store.write(dayPath(k), dayToText(day));
-    DB.cache.set(k, day);
-    var counts = {};
-    Object.keys(sheets).forEach(function (n) { counts[n] = sheets[n].dong.length; });
-    DB.index.ngay[k] = { tepGoc: goc, tenTepGoc: fileName, luuLuc: day.luuLuc, sheets: counts };
-  }
-
-  async function deleteDay(k) {
-    var e = DB.index.ngay[k];
-    if (!e) return;
-    if (e.tepGoc) await DB.store.remove(e.tepGoc);
-    await DB.store.remove(dayPath(k));
-    delete DB.index.ngay[k];
-    DB.cache.delete(k);
-    await saveIndex();
-  }
-
-  /* ================================================================
      Understanding a file: templates and roles
      ================================================================ */
   var ROLE_OPTIONS = {
@@ -1170,65 +961,8 @@
       if (seen) c.vaiTro = 'nhom'; else seen = true;
     });
   }
-  function draftTemplate(name, table) {
-    var old = DB.config.sheets[name];
-    var kind = old ? old.kieu : (STOCK_NAME.test(name) ? 'so-du' : 'phat-sinh');
-    var cot = table.columns.map(function (c) {
-      var o = old && old.cot.filter(function (x) { return x.ten === c.name; })[0];
-      if (o) return { ten: o.ten, kieu: o.kieu, vaiTro: o.vaiTro };
-      return { ten: c.name, kieu: kieuOf(c), vaiTro: defaultRole(c, kind), moi: !!old };
-    });
-    var missing = [];
-    if (old) {
-      old.cot.forEach(function (x) {
-        if (!table.columns.some(function (c) { return c.name === x.ten; })) {
-          missing.push(x.ten);
-          cot.push({ ten: x.ten, kieu: x.kieu, vaiTro: x.vaiTro, thieu: true });
-        }
-      });
-    }
-    oneUnit(cot);
-    return {
-      ten: name, kieu: kind, cot: cot,
-      tyLe: old ? (old.tyLe || []).map(function (r) { return Object.assign({}, r); }) : guessRatios(cot),
-      thuTu: old ? old.thuTu : Object.keys(DB.config.sheets).length,
-      daCo: !!old, thieu: missing
-    };
-  }
-  function storedTemplate(t) {
-    return {
-      kieu: t.kieu,
-      thuTu: t.thuTu,
-      cot: t.cot.map(function (c) { return { ten: c.ten, kieu: c.kieu, vaiTro: c.vaiTro }; }),
-      tyLe: t.tyLe.filter(function (r) { return r.ten && r.tu && r.mau && r.tu !== r.mau; })
-    };
-  }
-  function toStored(v, kieu) {
-    if (v == null || v === '') return null;
-    if (kieu === 'number') return typeof v === 'number' ? v : parseNum(String(v), 'vi');
-    if (kieu === 'date') {
-      if (v instanceof Date) return toISOLocal(v);
-      var d = parseDate(String(v), 'dmy');
-      return d ? toISOLocal(d) : null;
-    }
-    return v instanceof Date ? fmtDate(v, true) : String(v);
-  }
-  function normalizeSheet(table, tpl) {
-    var keep = [];
-    tpl.cot.forEach(function (c, i) { if (c.vaiTro !== 'bo-qua') keep.push(i); });
-    var idx = tpl.cot.map(function (c) {
-      for (var j = 0; j < table.columns.length; j++) if (table.columns[j].name === c.ten) return j;
-      return -1;
-    });
-    return {
-      cot: keep.map(function (i) { return { ten: tpl.cot[i].ten, kieu: tpl.cot[i].kieu }; }),
-      dong: table.rows.map(function (r) {
-        return keep.map(function (i) { return toStored(idx[i] >= 0 ? r.v[idx[i]] : null, tpl.cot[i].kieu); });
-      })
-    };
-  }
 
-  function detectDate(fileName, pages) {
+  function detectDate(fileName, pages, lastModified) {
     var n = fileName, m, d;
     if ((m = /(\d{1,2})[-_.](\d{1,2})[-_.](20\d{2})/.exec(n)) && (d = mkDate(+m[3], +m[2], +m[1]))) return { d: d, src: 'lấy từ tên tệp' };
     if ((m = /(20\d{2})[-_.](\d{1,2})[-_.](\d{1,2})/.exec(n)) && (d = mkDate(+m[1], +m[2], +m[3]))) return { d: d, src: 'lấy từ tên tệp' };
@@ -1244,8 +978,8 @@
       });
     });
     if (best) return { d: new Date(best.getFullYear(), best.getMonth(), best.getDate()), src: 'ngày lớn nhất trong cột “' + where + '”' };
-    var t = new Date();
-    return { d: new Date(t.getFullYear(), t.getMonth(), t.getDate()), src: 'không thấy ngày trong file, đang để hôm nay' };
+    var t = lastModified ? new Date(lastModified) : new Date();
+    return { d: new Date(t.getFullYear(), t.getMonth(), t.getDate()), src: lastModified ? 'không thấy ngày trong tên tệp và dữ liệu, lấy ngày sửa tệp' : 'không thấy ngày, đang để hôm nay' };
   }
 
   function ensureXLSX() {
@@ -1291,400 +1025,388 @@
     throw new Error('đuôi file chưa được hỗ trợ');
   }
 
+
   /* ================================================================
-     UI plumbing
+     Data folder: one sub-folder per dataset, files named by date
      ================================================================ */
-  var VIEW = { mode: 'sheet', sheet: null };
-  var REMEMBERED = null;
-
-  function showError(msg) { var e = $('errorBox'); e.textContent = msg || ''; e.hidden = !msg; }
-  function notice(msg) { var e = $('noticeBox'); e.textContent = msg || ''; e.hidden = !msg; }
-  function busy(on) { $('app').classList.toggle('busy', !!on); }
-  function showView(name) {
-    ['Sheet', 'Import', 'Storage', 'Report'].forEach(function (v) { $('view' + v).hidden = v.toLowerCase() !== name; });
-    $('sampleBanner').hidden = !(DB.store && DB.store.sample) || name === 'import';
-    hideTip();
-  }
-
-  var tip = $('tip');
-  function showTip(x, y, value, label, sub, color) {
-    tip.textContent = '';
-    tip.style.setProperty('--tip-key', color || 'var(--series)');
-    tip.appendChild(el('div', 'tip-value', value));
-    tip.appendChild(el('div', 'tip-label', label));
-    if (sub) tip.appendChild(el('div', 'tip-sub', sub));
-    tip.hidden = false;
-    var w = tip.offsetWidth, h = tip.offsetHeight;
-    tip.style.left = Math.max(8, Math.min(x + 14, window.innerWidth - w - 8)) + 'px';
-    tip.style.top = (y - h - 12 < 8 ? y + 16 : y - h - 12) + 'px';
-  }
-  function hideTip() { tip.hidden = true; }
-  function centerOf(node) { var b = node.getBoundingClientRect(); return [b.left + b.width / 2, b.top]; }
-
-  var ICONS = {
-    upload: '<path d="M8 11V2.5M4.5 6 8 2.5 11.5 6M2.5 11v2.5h11V11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
-    folder: '<path d="M2 4.5h4l1.5 1.5H14V13H2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
-    report: '<path d="M4 2h6l3 3v9H4zM10 2v3h3M6.5 8.5h4M6.5 11h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>'
+  var STD = {
+    tonphat: { folder: 'TonPhat', label: 'Tồn phát', kieu: 'so-du', order: 1, pair: 'phat' },
+    tonthu: { folder: 'TonThu', label: 'Tồn thu', kieu: 'so-du', order: 2, pair: 'thu' },
+    phatthanhcong: { folder: 'PhatThanhCong', label: 'Phát thành công', kieu: 'phat-sinh', order: 3, pair: 'phat' },
+    thuthanhcong: { folder: 'ThuThanhCong', label: 'Thu thành công', kieu: 'phat-sinh', order: 4, pair: 'thu' }
   };
-  function navButton(label, opts) {
-    var b = el('button', 'nav-item');
-    b.type = 'button';
-    if (opts.icon) {
-      var holder = document.createElement('span');
-      holder.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true">' + ICONS[opts.icon] + '</svg>';
-      b.appendChild(holder.firstChild);
-    } else {
-      var c = el('span', 'nav-caret', '›'); c.setAttribute('aria-hidden', 'true'); c.style.fontSize = '11px'; c.style.opacity = '0.7';
-      b.appendChild(c);
-    }
-    b.appendChild(el('span', null, label));
-    if (opts.count != null) b.appendChild(el('span', 'nav-count', opts.count));
-    if (opts.tag) b.appendChild(el('span', 'nav-tag', opts.tag));
-    if (opts.current) b.setAttribute('aria-current', 'page');
-    b.addEventListener('click', opts.onClick);
-    return b;
+  var OVERVIEW = '__tong-quan';
+  var DATA_EXT = /\.(xlsx|xlsm|xls|ods|csv|tsv|txt|json)$/i;
+
+  function normKey(s) {
+    return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[đĐ]/g, 'd').replace(/[^a-z0-9]/gi, '').toLowerCase();
   }
-  function renderNav() {
-    var nav = $('nav');
-    nav.textContent = '';
-    var names = sheetNames();
-    if (names.length) {
-      nav.appendChild(el('div', 'nav-section', 'Số liệu'));
-      names.forEach(function (n) {
-        nav.appendChild(navButton(n, {
-          current: VIEW.mode === 'sheet' && VIEW.sheet === n,
-          onClick: function () { showSheet(n); }
-        }));
+  function stdOf(id) { return STD[normKey(id)] || null; }
+  function dsLabel(id) {
+    var s = stdOf(id);
+    return s ? s.label : String(id).replace(/([a-zà-ỹ])([A-ZÀ-Ỹ])/g, '$1 $2').replace(/[_-]+/g, ' ').trim();
+  }
+  function dsOrder(id) { var s = stdOf(id); return s ? s.order : 50; }
+  function colIdx(ds, role) {
+    for (var j = 0; j < ds.cols.length; j++) if (ds.cols[j].vaiTro === role) return j;
+    return -1;
+  }
+
+  /* ---------- Browser memory: chosen folder, settings, files already read ---------- */
+  function idb() {
+    return new Promise(function (res, rej) {
+      var r = indexedDB.open('dhcl', 2);
+      r.onupgradeneeded = function () {
+        var db = r.result;
+        if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+        if (!db.objectStoreNames.contains('files')) db.createObjectStore('files', { keyPath: 'path' });
+      };
+      r.onsuccess = function () { res(r.result); };
+      r.onerror = function () { rej(r.error); };
+    });
+  }
+  async function idbReq(store, mode, fn) {
+    try {
+      var db = await idb();
+      return await new Promise(function (res) {
+        var tx = db.transaction(store, mode);
+        var q = fn(tx.objectStore(store));
+        tx.oncomplete = function () { res(q && 'result' in q ? q.result : null); };
+        tx.onerror = function () { res(null); };
+        tx.onabort = function () { res(null); };
+      });
+    } catch (e) { return null; }
+  }
+  function kvGet(k) { return idbReq('kv', 'readonly', function (s) { return s.get(k); }); }
+  function kvSet(k, v) { return idbReq('kv', 'readwrite', function (s) { return s.put(v, k); }); }
+  function filesAll() { return idbReq('files', 'readonly', function (s) { return s.getAll(); }); }
+  function filesPut(rec) { return idbReq('files', 'readwrite', function (s) { return s.put(rec); }); }
+  function filesDelete(path) { return idbReq('files', 'readwrite', function (s) { return s.delete(path); }); }
+  function filesClear() { return idbReq('files', 'readwrite', function (s) { return s.clear(); }); }
+
+  var CFG = null;
+  function emptyCfg() {
+    return { phienBan: 2, cachTinhTyLe: 'tung-ngay', datasets: {}, tuyChonBang: { tb: true, max: false, min: false, prev: false, delta: true } };
+  }
+  function saveCfg() { if (SRC.mode === 'sample') return Promise.resolve(); return kvSet('config', CFG); }
+
+  var SRC = { mode: 'sample', name: '', lastUpdate: null, report: null };
+  var ROOT = null;
+  var FILES = new Map();
+  var DS = {};
+  var DS_ORDER = [];
+  var ALLKEYS = [];
+
+  function latestDate() { return ALLKEYS.length ? fromKey(ALLKEYS[ALLKEYS.length - 1]) : null; }
+
+  /* ---------- Reading files ---------- */
+  function datasetOfPath(path) { var p = path.split('/'); return p.length > 1 ? p[0] : ''; }
+  function stripTable(t) { t.rows.forEach(function (r) { delete r.text; }); return t; }
+
+  async function parseFile(file, path) {
+    var rec = { path: path, dataset: datasetOfPath(path), name: file.name, size: file.size, lastModified: file.lastModified, tables: [], warn: [], error: null, dateKey: null, dateSrc: '' };
+    try {
+      var r = await readFilePages(file);
+      rec.tables = r.pages.map(function (p) { return { sheet: p.name, table: stripTable(p.table) }; });
+      rec.warn = r.errors;
+      var dd = detectDate(file.name, r.pages, file.lastModified);
+      rec.dateKey = dkey(dd.d);
+      rec.dateSrc = dd.src;
+    } catch (e) { rec.error = e && e.message ? e.message : String(e); }
+    return rec;
+  }
+
+  async function listDataFiles(dir, prefix, out, depth) {
+    for await (var entry of dir.values()) {
+      var n = entry.name;
+      if (n.charAt(0) === '.' || n.indexOf('~$') === 0) continue;
+      if (entry.kind === 'directory') { if (depth < 5) await listDataFiles(entry, prefix + n + '/', out, depth + 1); }
+      else if (DATA_EXT.test(n)) out.push({ path: prefix + n, handle: entry });
+    }
+  }
+
+  function progress(msg) { var p = $('progressBox'); p.textContent = msg || ''; p.hidden = !msg; }
+
+  /* Only new or changed files are parsed; everything else comes from what was read before */
+  async function scanEntries(entries, removeMissing) {
+    var rep = { total: entries.length, read: 0, reused: 0, failed: [], outside: [], removed: 0 };
+    var seen = new Set();
+    for (var i = 0; i < entries.length; i++) {
+      var en = entries[i];
+      if (!datasetOfPath(en.path)) { rep.outside.push(en.path); continue; }
+      seen.add(en.path);
+      var file = await en.getFile();
+      var old = FILES.get(en.path);
+      if (old && old.size === file.size && old.lastModified === file.lastModified) { rep.reused++; continue; }
+      progress('Đang đọc tệp ' + (i + 1) + '/' + entries.length + ': ' + en.path);
+      if (i % 3 === 0) await new Promise(function (r) { setTimeout(r, 0); });
+      var rec = await parseFile(file, en.path);
+      FILES.set(en.path, rec);
+      if (rec.error) rep.failed.push(en.path + ': ' + rec.error); else rep.read++;
+      if (SRC.mode !== 'sample') await filesPut(rec);
+    }
+    if (removeMissing) {
+      Array.from(FILES.keys()).forEach(function (p) {
+        if (!seen.has(p)) { FILES.delete(p); rep.removed++; filesDelete(p); }
       });
     }
-    nav.appendChild(el('div', 'nav-section', 'Quản lý'));
-    nav.appendChild(navButton('Tải dữ liệu', { icon: 'upload', onClick: onPick }));
-    nav.appendChild(navButton('Dữ liệu đã lưu', {
-      icon: 'folder', count: dayKeys().length + ' ngày',
-      current: VIEW.mode === 'storage', onClick: showStorage
-    }));
-    nav.appendChild(navButton('Tạo báo cáo', {
-      icon: 'report', tag: 'bước sau',
-      current: VIEW.mode === 'report', onClick: function () { VIEW = { mode: 'report' }; showView('report'); renderNav(); }
-    }));
-    var cur = nav.querySelector('[aria-current="page"]');
-    if (cur && cur.scrollIntoView && !window.matchMedia('(min-width: 768px)').matches) cur.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  }
-  function renderSource() {
-    var s = DB.store, chip = $('modeChip');
-    chip.className = 'chip-mode ' + (s.kind === 'folder' ? 'folder' : 'sample');
-    chip.textContent = s.sample ? 'DỮ LIỆU MẪU' : s.kind === 'folder' ? 'THƯ MỤC TRÊN MÁY' : 'BỘ NHỚ TẠM';
-    $('srcName').textContent = s.kind === 'folder' ? s.name : (s.sample ? 'Bưu chính, 6 bưu cục, quý III/2026' : 'Chưa lưu vào thư mục');
-    var ks = dayKeys();
-    $('srcMeta').textContent = ks.length
-      ? fmtNum(ks.length) + ' ngày dữ liệu · ' + fmtKey(ks[0], true) + ' – ' + fmtKey(ks[ks.length - 1])
-      : 'Chưa có ngày nào';
-  }
-  function afterOpen(opts) {
-    PER.anchor = latestDate() || new Date();
-    renderSource();
-    var names = sheetNames();
-    if (names.length && !(opts && opts.storage)) showSheet(VIEW.sheet && names.indexOf(VIEW.sheet) >= 0 ? VIEW.sheet : names[0]);
-    else showStorage();
+    progress('');
+    return rep;
   }
 
-  /* ---------- Folder selection ---------- */
-  function folderSupported() {
-    return typeof window.showDirectoryPicker === 'function' && window.top === window.self;
+  /* ---------- Building datasets ---------- */
+  function makeTemplate(id, table) {
+    var s = stdOf(id);
+    var kind = s ? s.kieu : (STOCK_NAME.test(dsLabel(id)) ? 'so-du' : 'phat-sinh');
+    var cot = table.columns.map(function (c) { return { ten: c.name, kieu: kieuOf(c), vaiTro: defaultRole(c, kind) }; });
+    oneUnit(cot);
+    return { nhan: dsLabel(id), kieu: kind, cot: cot, tyLe: guessRatios(cot), xacNhan: false };
   }
-  async function useTempStore() {
-    var st = new MemoryStore('Bộ nhớ tạm');
-    await openStore(st);
-    afterOpen({ storage: true });
-    notice('Trình duyệt hoặc khung xem này không cho ghi vào thư mục, nên dữ liệu chỉ được giữ tạm đến khi đóng trang. Để lưu thật, mở tệp index.html bằng Edge hoặc Chrome trên máy tính.');
+  function overlap(tpl, table) {
+    var names = new Set(tpl.cot.map(function (c) { return c.ten; }));
+    var hit = table.columns.filter(function (c) { return names.has(c.name); }).length;
+    return Math.max(hit / Math.max(1, tpl.cot.length), hit / Math.max(1, table.columns.length));
   }
-  async function chooseFolder() {
-    showError('');
-    if (!folderSupported()) { await useTempStore(); return; }
-    try {
-      var h = await window.showDirectoryPicker({ id: 'dhcl', mode: 'readwrite' });
-      await kvSet('root', h);
-      REMEMBERED = null;
-      busy(true);
-      await openStore(new FolderStore(h));
-      busy(false);
-      afterOpen(dayKeys().length ? null : { storage: true });
-      notice(dayKeys().length
-        ? 'Đã mở thư mục “' + h.name + '” với ' + dayKeys().length + ' ngày dữ liệu.'
-        : 'Đã chọn thư mục “' + h.name + '”. Bấm Tải dữ liệu để thêm file xuất từ hệ thống.');
-    } catch (e) {
-      busy(false);
-      if (e && e.name === 'AbortError') return;
-      showError('Không mở được thư mục: ' + (e && e.message ? e.message : e) + '.');
-    }
+  function largestTable(rec) {
+    return rec.tables.reduce(function (b, t) { return !b || t.table.rows.length > b.rows.length ? t.table : b; }, null);
   }
-  async function reopenRemembered() {
-    if (!REMEMBERED) return chooseFolder();
-    try {
-      var p = await REMEMBERED.requestPermission({ mode: 'readwrite' });
-      if (p !== 'granted') { showError('Chưa được cấp quyền đọc ghi thư mục “' + REMEMBERED.name + '”.'); return; }
-      busy(true);
-      await openStore(new FolderStore(REMEMBERED));
-      busy(false);
-      REMEMBERED = null;
-      afterOpen();
-    } catch (e) { busy(false); showError('Không mở lại được thư mục: ' + e.message + '. Hãy chọn lại thư mục.'); }
-  }
-  function onPick() {
-    if (DB.store.sample) {
-      if (REMEMBERED) reopenRemembered(); else chooseFolder();
-      return;
-    }
-    $('fileInput').click();
+  function normVal(v, kieu) {
+    if (v == null || v === '') return null;
+    if (kieu === 'number') return typeof v === 'number' ? v : parseNum(String(v), 'vi');
+    if (kieu === 'date') return v instanceof Date ? v : parseDate(String(v), 'dmy');
+    return v instanceof Date ? fmtDate(v, true) : String(v);
   }
 
-  /* ================================================================
-     Import review
-     ================================================================ */
-  var IMP = null;
-
-  async function startImport(list) {
-    var files = Array.prototype.slice.call(list || []);
-    if (!files.length) return;
-    showError(''); notice('');
-    busy(true);
-    var items = [], errors = [];
-    for (var i = 0; i < files.length; i++) {
-      var f = files[i];
-      try {
-        var r = await readFilePages(f);
-        errors = errors.concat(r.errors);
-        if (!r.pages.length) { errors.push('“' + f.name + '”: không có sheet nào có dữ liệu'); continue; }
-        var dd = detectDate(f.name, r.pages);
-        items.push({ file: f, name: f.name, pages: r.pages, dateKey: dkey(dd.d), dateSrc: dd.src });
-      } catch (e) {
-        errors.push('“' + f.name + '”: ' + (e && e.message ? e.message : 'không đọc được'));
+  function buildDatasets() {
+    DS = {};
+    var byDs = {}, cfgChanged = false;
+    FILES.forEach(function (rec) {
+      if (!rec.dataset || rec.error || !rec.tables.length) return;
+      (byDs[rec.dataset] = byDs[rec.dataset] || []).push(rec);
+    });
+    Object.keys(byDs).forEach(function (id) {
+      var recs = byDs[id].sort(function (a, b) {
+        return a.dateKey < b.dateKey ? -1 : a.dateKey > b.dateKey ? 1 : a.lastModified - b.lastModified;
+      });
+      var tpl = CFG.datasets[id];
+      if (!tpl) { tpl = makeTemplate(id, largestTable(recs[recs.length - 1])); CFG.datasets[id] = tpl; cfgChanged = true; }
+      var ds = { id: id, label: tpl.nhan || dsLabel(id), tpl: tpl, files: recs, days: new Map(), warn: [], skipped: [], newCols: [], link: null };
+      recs.forEach(function (rec) {
+        rec.tables.forEach(function (tb) {
+          if (overlap(tpl, tb.table) < 0.6) { ds.skipped.push(rec.path + ' › sheet “' + tb.sheet + '”'); return; }
+          tb.table.columns.forEach(function (c) {
+            if (!tpl.cot.some(function (x) { return x.ten === c.name; })) {
+              tpl.cot.push({ ten: c.name, kieu: kieuOf(c), vaiTro: defaultRole(c, tpl.kieu), moi: true });
+              ds.newCols.push(c.name + ' (từ ' + rec.name + ')');
+              cfgChanged = true;
+            }
+          });
+        });
+      });
+      oneUnit(tpl.cot);
+      var cols = tpl.cot.filter(function (c) { return c.vaiTro !== 'bo-qua'; })
+        .map(function (c) { return { ten: c.ten, kieu: c.kieu, vaiTro: c.vaiTro }; });
+      recs.forEach(function (rec) {
+        rec.tables.forEach(function (tb) {
+          var t = tb.table;
+          if (overlap(tpl, t) < 0.6) return;
+          var map = cols.map(function (c) {
+            for (var j = 0; j < t.columns.length; j++) if (t.columns[j].name === c.ten) return j;
+            return -1;
+          });
+          var dayRows = ds.days.get(rec.dateKey);
+          if (!dayRows) { dayRows = []; ds.days.set(rec.dateKey, dayRows); }
+          t.rows.forEach(function (r) {
+            dayRows.push(map.map(function (j, ci) { return normVal(j >= 0 ? r.v[j] : null, cols[ci].kieu); }));
+          });
+        });
+      });
+      /* Several files on the same day: one row per code, the most recent file wins */
+      var mi = -1;
+      cols.forEach(function (c, j) { if (c.vaiTro === 'ma' && mi < 0) mi = j; });
+      if (mi >= 0) {
+        var dups = 0;
+        ds.days.forEach(function (rows, k) {
+          var m = new Map();
+          rows.forEach(function (r) {
+            var key = r[mi];
+            if (key == null) { m.set(Symbol(), r); return; }
+            if (m.has(key)) dups++;
+            m.set(key, r);
+          });
+          if (dups) ds.days.set(k, Array.from(m.values()));
+        });
+        if (dups) ds.warn.push(fmtNum(dups) + ' dòng trùng mã trong cùng ngày (nhiều tệp cùng ngày). Đã giữ dòng của tệp mới nhất.');
       }
-    }
-    busy(false);
-    if (!items.length) { showError('Không đọc được file nào. ' + errors.join('; ') + '.'); return; }
-    var tpls = {}, order = [];
-    items.forEach(function (it) {
-      it.pages.forEach(function (p) {
-        if (!tpls[p.name]) { tpls[p.name] = draftTemplate(p.name, p.table); tpls[p.name].sample = p.table; order.push(p.name); }
+      ds.cols = cols;
+      ds.keys = Array.from(ds.days.keys()).sort();
+      DS[id] = ds;
+    });
+    linkDatasets();
+    buildOverview();
+    DS_ORDER = Object.keys(DS).filter(function (id) { return id !== OVERVIEW; })
+      .sort(function (a, b) { return dsOrder(a) - dsOrder(b) || a.localeCompare(b); });
+    if (DS[OVERVIEW]) DS_ORDER.unshift(OVERVIEW);
+    var all = new Set();
+    Object.keys(DS).forEach(function (id) { DS[id].keys.forEach(function (k) { all.add(k); }); });
+    ALLKEYS = Array.from(all).sort();
+    if (cfgChanged) saveCfg();
+  }
+
+  /* ---------- Linking: the same code seen in several folders shares its details ---------- */
+  function linkDatasets() {
+    var ids = Object.keys(DS);
+    var look = new Map();
+    ids.forEach(function (id) {
+      var ds = DS[id], mi = colIdx(ds, 'ma');
+      if (mi < 0) return;
+      var ui = colIdx(ds, 'buu-cuc');
+      ds.keys.forEach(function (k) {
+        ds.days.get(k).forEach(function (r) {
+          var ma = r[mi];
+          if (ma == null) return;
+          var e = look.get(ma);
+          if (!e) { e = { unit: null, attrs: {}, src: {} }; look.set(ma, e); }
+          if (ui >= 0 && r[ui] != null) e.unit = r[ui];
+          ds.cols.forEach(function (c, j) {
+            if (c.vaiTro === 'nhom' && r[j] != null) { e.attrs[c.ten] = r[j]; e.src[c.ten] = id; }
+          });
+        });
       });
     });
-    var nextOrder = Object.keys(DB.config.sheets).length;
-    order.forEach(function (n) { if (!tpls[n].daCo) tpls[n].thuTu = nextOrder++; });
-    IMP = { items: items, tpls: tpls, order: order };
-    VIEW = { mode: 'import' };
-    showView('import');
-    renderNav();
-    renderImport();
-    if (errors.length) showError('Đã bỏ qua: ' + errors.join('; ') + '.');
-    window.scrollTo(0, 0);
-  }
-
-  function renderImport() {
-    $('importMeta').textContent = IMP.items.length + ' tệp · ' + IMP.order.length + ' sheet';
-    renderImportFiles();
-    var box = $('importSheets');
-    box.textContent = '';
-    IMP.order.forEach(function (n) { box.appendChild(sheetReviewCard(IMP.tpls[n])); });
-    var where = DB.store.kind === 'folder' ? 'vào thư mục “' + DB.store.name + '”' : 'vào bộ nhớ tạm';
-    $('importSave').textContent = 'Lưu ' + uniqueDates().length + ' ngày ' + where;
-  }
-  function uniqueDates() {
-    var s = {};
-    IMP.items.forEach(function (it) { s[it.dateKey] = 1; });
-    return Object.keys(s);
-  }
-  function renderImportFiles() {
-    var t = $('importFiles'), thead = t.tHead, tbody = t.tBodies[0];
-    thead.textContent = ''; tbody.textContent = '';
-    var hr = document.createElement('tr');
-    ['Tệp', 'Ngày dữ liệu', 'Cách xác định ngày', 'Sheet đọc được', 'Trạng thái'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
-    thead.appendChild(hr);
-    var counts = {};
-    IMP.items.forEach(function (it) { counts[it.dateKey] = (counts[it.dateKey] || 0) + 1; });
-    IMP.items.forEach(function (it) {
-      var tr = document.createElement('tr');
-      tr.appendChild(el('td', null, it.name));
-      var td = document.createElement('td');
-      var inp = document.createElement('input');
-      inp.type = 'date'; inp.value = it.dateKey; inp.setAttribute('aria-label', 'Ngày dữ liệu của ' + it.name);
-      inp.addEventListener('change', function () {
-        if (!inp.value) { inp.value = it.dateKey; return; }
-        it.dateKey = inp.value; it.dateSrc = 'bạn chọn';
-        renderImportFiles();
-        $('importSave').textContent = $('importSave').textContent.replace(/Lưu \d+ ngày/, 'Lưu ' + uniqueDates().length + ' ngày');
+    ids.forEach(function (id) {
+      var ds = DS[id], mi = colIdx(ds, 'ma');
+      ds.link = { unitFilled: 0, unitMissing: 0, attrFilled: 0, added: [], unitAdded: false, rows: 0 };
+      if (mi < 0) return;
+      var have = new Set(ds.cols.map(function (c) { return c.ten; }));
+      var extra = {}, rowsN = 0;
+      ds.keys.forEach(function (k) {
+        ds.days.get(k).forEach(function (r) {
+          rowsN++;
+          var e = look.get(r[mi]);
+          if (!e) return;
+          Object.keys(e.attrs).forEach(function (n) { if (!have.has(n) && e.src[n] !== id) extra[n] = (extra[n] || 0) + 1; });
+        });
       });
-      td.appendChild(inp);
-      tr.appendChild(td);
-      var src = el('td', 'rule-note', it.dateSrc);
-      tr.appendChild(src);
-      tr.appendChild(el('td', 'rule-note', it.pages.map(function (p) { return p.name + ' (' + fmtNum(p.table.rows.length) + ' dòng)'; }).join(' · ')));
-      var st = document.createElement('td');
-      var chip;
-      if (counts[it.dateKey] > 1) chip = el('span', 'chip bad', 'Trùng ngày với tệp khác, tệp sau ghi đè');
-      else if (DB.index.ngay[it.dateKey]) chip = el('span', 'chip new', 'Đã có ngày này, sẽ ghi đè');
-      else chip = el('span', 'chip ok', 'Ngày mới');
-      st.appendChild(chip);
-      tr.appendChild(st);
-      tbody.appendChild(tr);
+      ds.link.rows = rowsN;
+      var ui = colIdx(ds, 'buu-cuc');
+      var pushCol = function (col) {
+        ds.cols.push(col);
+        ds.keys.forEach(function (k) { ds.days.get(k).forEach(function (r) { r.push(null); }); });
+        return ds.cols.length - 1;
+      };
+      if (ui < 0) { ui = pushCol({ ten: 'Bưu cục (liên kết)', kieu: 'text', vaiTro: 'buu-cuc', lienKet: true }); ds.link.unitAdded = true; }
+      Object.keys(extra).filter(function (n) { return extra[n] >= Math.max(1, rowsN * 0.01); }).forEach(function (n) {
+        pushCol({ ten: n + ' (liên kết)', kieu: 'text', vaiTro: 'nhom', lienKet: true, from: n });
+        ds.link.added.push(n);
+      });
+      ds.keys.forEach(function (k) {
+        ds.days.get(k).forEach(function (r) {
+          var e = look.get(r[mi]);
+          if (r[ui] == null) {
+            if (e && e.unit != null) { r[ui] = e.unit; ds.link.unitFilled++; } else ds.link.unitMissing++;
+          }
+          if (!e) return;
+          ds.cols.forEach(function (c, j) {
+            if (r[j] != null) return;
+            var from = c.lienKet ? c.from : (c.vaiTro === 'nhom' ? c.ten : null);
+            if (from && e.attrs[from] != null) { r[j] = e.attrs[from]; ds.link.attrFilled++; }
+          });
+        });
+      });
     });
   }
 
-  function sampleValues(table, colName) {
-    if (!table) return '';
-    var j = -1;
-    table.columns.forEach(function (c, k) { if (c.name === colName) j = k; });
-    if (j < 0) return '';
-    var seen = [], set = {};
-    for (var i = 0; i < table.rows.length && seen.length < 3; i++) {
-      var v = table.rows[i].v[j];
-      if (v == null) continue;
-      var s = fmtAny(v);
-      if (!set[s]) { set[s] = 1; seen.push(s); }
-    }
-    return seen.join(' · ');
+  /* ---------- Overview: one row per post office per day, counted from every folder ---------- */
+  function buildOverview() {
+    var srcIds = Object.keys(DS).filter(function (id) { return colIdx(DS[id], 'buu-cuc') >= 0; });
+    if (!srcIds.length) return;
+    var pos = function (id) { var s = stdOf(id); return s ? ({ phatthanhcong: 1, tonphat: 2, thuthanhcong: 3, tonthu: 4 })[normKey(id)] : 9; };
+    srcIds.sort(function (a, b) { return pos(a) - pos(b) || a.localeCompare(b); });
+    var cols = [{ ten: 'Bưu cục', kieu: 'text', vaiTro: 'buu-cuc' }];
+    srcIds.forEach(function (id) {
+      cols.push({ ten: DS[id].label, kieu: 'number', vaiTro: DS[id].tpl.kieu === 'so-du' ? 'so-du' : 'cong-don', src: id });
+    });
+    var days = new Map();
+    srcIds.forEach(function (id, si) {
+      var ds = DS[id], ui = colIdx(ds, 'buu-cuc');
+      ds.keys.forEach(function (k) {
+        var m = days.get(k);
+        if (!m) { m = { units: new Map(), has: new Set() }; days.set(k, m); }
+        m.has.add(si);
+        ds.days.get(k).forEach(function (r) {
+          var u = r[ui], key = u == null ? EMPTY : u;
+          var row = m.units.get(key);
+          if (!row) { row = [u].concat(srcIds.map(function () { return 0; })); m.units.set(key, row); }
+          row[1 + si]++;
+        });
+      });
+    });
+    var out = new Map();
+    days.forEach(function (m, k) {
+      var rows = Array.from(m.units.values());
+      rows.forEach(function (row) { srcIds.forEach(function (id, si) { if (!m.has.has(si)) row[1 + si] = null; }); });
+      out.set(k, rows);
+    });
+    var tyLe = [];
+    [['phat', 'phát'], ['thu', 'thu']].forEach(function (p) {
+      var find = function (kind) { return srcIds.filter(function (id) { var s = stdOf(id); return s && s.pair === p[0] && s.kieu === kind; })[0]; };
+      var tc = find('phat-sinh'), ton = find('so-du');
+      if (tc && ton) tyLe.push({ ten: 'Tỷ lệ ' + p[1] + ' thành công', tuCot: [DS[tc].label], mauCot: [DS[tc].label, DS[ton].label] });
+    });
+    var tpl = { nhan: 'Tổng quan', kieu: 'phat-sinh', cot: cols, tyLe: tyLe, tuDong: true };
+    DS[OVERVIEW] = {
+      id: OVERVIEW, label: 'Tổng quan', tpl: tpl, cols: cols, days: out, keys: Array.from(out.keys()).sort(),
+      files: [], warn: [], skipped: [], newCols: [], link: null, sources: srcIds
+    };
   }
 
-  function sheetReviewCard(t) {
-    var card = el('section', 'card table-card sheet-card');
-    var head = el('div', 'card-head');
-    head.appendChild(el('h3', 'card-title', t.ten));
-    head.appendChild(t.daCo ? el('span', 'chip ok', 'Khớp mẫu đã lưu') : el('span', 'chip new', 'Sheet mới, kiểm tra vai trò các cột'));
-    card.appendChild(head);
-
-    var meta = el('div', 'meta-row');
-    var kindSel = document.createElement('select');
-    fillSelect(kindSel, [
-      ['phat-sinh', 'Số phát sinh trong ngày (nhiều ngày: cộng các ngày)'],
-      ['so-du', 'Số dư tại thời điểm, ví dụ danh sách tồn (nhiều ngày: lấy ngày cuối kỳ)']
-    ], t.kieu);
-    kindSel.addEventListener('change', function () {
-      t.kieu = kindSel.value;
-      t.cot.forEach(function (c) {
-        if (t.kieu === 'so-du' && c.vaiTro === 'cong-don') c.vaiTro = 'so-du';
-        else if (t.kieu === 'phat-sinh' && c.vaiTro === 'so-du' && !STOCK_NAME.test(c.ten)) c.vaiTro = 'cong-don';
-      });
-      card.replaceWith(sheetReviewCard(t));
-    });
-    meta.appendChild(field('Mỗi file ngày của sheet này chứa', kindSel));
-    card.appendChild(meta);
-
-    var warns = [];
-    if (t.thieu && t.thieu.length) warns.push('Thiếu so với mẫu đã lưu: ' + t.thieu.join(', ') + '. Các cột này sẽ để trống cho ngày này.');
-    var news = t.cot.filter(function (c) { return c.moi; }).map(function (c) { return c.ten; });
-    if (news.length) warns.push('Cột mới chưa có trong mẫu: ' + news.join(', ') + '.');
-    if (!t.cot.some(function (c) { return c.vaiTro === 'buu-cuc'; })) warns.push('Chưa có cột nào là Bưu cục. Nếu sheet có cột đơn vị, hãy chọn vai trò Bưu cục để tổng hợp theo đơn vị.');
-    if (warns.length) {
-      var ul = el('ul', 'warn-list');
-      warns.forEach(function (w) { ul.appendChild(el('li', null, w)); });
-      card.appendChild(ul);
-    }
-
-    var wrap = el('div', 'table-scroll');
-    var table = document.createElement('table');
-    var thead = document.createElement('thead'), tbody = document.createElement('tbody');
-    var hr = document.createElement('tr');
-    ['Cột trong file', 'Giá trị ví dụ', 'Nhận diện', 'Vai trò', 'Cách tính khi xem nhiều ngày'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
-    thead.appendChild(hr);
-    t.cot.forEach(function (c) {
-      var tr = document.createElement('tr');
-      var name = el('td', null, c.ten);
-      if (c.thieu) name.appendChild(el('span', 'chip bad', 'thiếu'));
-      if (c.moi) name.appendChild(el('span', 'chip new', 'mới'));
-      Array.prototype.forEach.call(name.querySelectorAll('.chip'), function (x) { x.style.marginLeft = '6px'; });
-      tr.appendChild(name);
-      tr.appendChild(el('td', 'sample-vals', sampleValues(t.sample, c.ten)));
-      var kd = document.createElement('td');
-      kd.appendChild(el('span', 'chip' + (c.kieu === 'number' ? ' ok' : c.kieu === 'date' ? ' new' : ''), KIEU_LABEL[c.kieu]));
-      tr.appendChild(kd);
-      var rd = document.createElement('td');
-      var sel = document.createElement('select');
-      sel.setAttribute('aria-label', 'Vai trò của cột ' + c.ten);
-      fillSelect(sel, ROLE_OPTIONS[c.kieu].map(function (r) { return [r, ROLE_LABEL[r]]; }), c.vaiTro);
-      rd.appendChild(sel);
-      tr.appendChild(rd);
-      var rule = el('td', 'rule-note', ROLE_RULE[c.vaiTro]);
-      tr.appendChild(rule);
-      sel.addEventListener('change', function () {
-        c.vaiTro = sel.value;
-        if (c.vaiTro === 'buu-cuc') {
-          t.cot.forEach(function (o) { if (o !== c && o.vaiTro === 'buu-cuc') o.vaiTro = 'nhom'; });
-          card.replaceWith(sheetReviewCard(t));
-          return;
-        }
-        rule.textContent = ROLE_RULE[c.vaiTro];
-      });
-      tbody.appendChild(tr);
-    });
-    table.appendChild(thead); table.appendChild(tbody);
-    wrap.appendChild(table);
-    card.appendChild(wrap);
-
-    var nums = t.cot.filter(function (c) { return c.kieu === 'number'; });
-    if (nums.length >= 2) {
-      var rh = el('div', 'card-head');
-      rh.appendChild(el('h4', 'card-title', 'Chỉ tiêu tỷ lệ'));
-      rh.style.fontSize = '15px';
-      card.appendChild(rh);
-      var rbox = el('div', 'ratios');
-      rbox.appendChild(el('p', 'card-note', 'Tỷ lệ của một kỳ = tổng tử số trong kỳ / tổng mẫu số trong kỳ × 100. App không lấy trung bình các tỷ lệ ngày.'));
-      t.tyLe.forEach(function (r, i) {
-        var row = el('div', 'ratio-row');
-        var nm = document.createElement('input'); nm.type = 'text'; nm.value = r.ten; nm.setAttribute('aria-label', 'Tên tỷ lệ');
-        nm.addEventListener('input', function () { r.ten = nm.value.trim(); });
-        var items = nums.map(function (c) { return [c.ten, c.ten]; });
-        var tu = document.createElement('select'); fillSelect(tu, items, r.tu); tu.setAttribute('aria-label', 'Tử số');
-        var mau = document.createElement('select'); fillSelect(mau, items, r.mau); mau.setAttribute('aria-label', 'Mẫu số');
-        tu.addEventListener('change', function () { r.tu = tu.value; });
-        mau.addEventListener('change', function () { r.mau = mau.value; });
-        var del = el('button', 'btn btn-sm btn-danger', 'Xóa'); del.type = 'button';
-        del.addEventListener('click', function () { t.tyLe.splice(i, 1); card.replaceWith(sheetReviewCard(t)); });
-        row.appendChild(nm); row.appendChild(el('span', null, '='));
-        row.appendChild(tu); row.appendChild(el('span', null, '/'));
-        row.appendChild(mau); row.appendChild(el('span', null, '× 100'));
-        row.appendChild(del);
-        rbox.appendChild(row);
-      });
-      var add = el('button', 'btn btn-sm', 'Thêm tỷ lệ'); add.type = 'button';
-      add.style.justifySelf = 'start';
-      add.addEventListener('click', function () {
-        t.tyLe.push({ ten: 'Tỷ lệ mới', tu: nums[0].ten, mau: nums[1].ten });
-        card.replaceWith(sheetReviewCard(t));
-      });
-      rbox.appendChild(add);
-      card.appendChild(rbox);
-    }
-    return card;
+  /* ---------- Reconciliation between backlog and success folders ---------- */
+  function pairOf(p) {
+    var ids = Object.keys(DS).filter(function (id) { return id !== OVERVIEW; });
+    var find = function (kind) { return ids.filter(function (id) { var s = stdOf(id); return s && s.pair === p && s.kieu === kind; })[0]; };
+    return { ton: find('so-du'), tc: find('phat-sinh') };
   }
-
-  async function saveImport() {
-    showError('');
-    busy(true);
-    try {
-      IMP.order.forEach(function (n) { DB.config.sheets[n] = storedTemplate(IMP.tpls[n]); });
-      await saveConfig();
-      var byDate = {};
-      IMP.items.forEach(function (it) { byDate[it.dateKey] = it; });
-      var keys = Object.keys(byDate).sort();
-      for (var i = 0; i < keys.length; i++) {
-        var it = byDate[keys[i]], sheets = {};
-        it.pages.forEach(function (p) { sheets[p.name] = normalizeSheet(p.table, DB.config.sheets[p.name]); });
-        await saveDay(keys[i], it.name, it.file, sheets);
+  function reconcile(range, unitKey) {
+    var sk = dkey(range[0]), ek = dkey(range[1]);
+    var unitOk = function (u) { return unitKey == null || keyOf(u) === unitKey; };
+    return [['phat', 'Phát'], ['thu', 'Thu']].map(function (p) {
+      var pr = pairOf(p[0]), res = { key: p[0], label: p[1], ok: false, both: [], gone: [], noUnit: [] };
+      if (!pr.ton || !pr.tc) { res.reason = 'Chưa có đủ hai thư mục ' + (p[0] === 'phat' ? 'TonPhat và PhatThanhCong' : 'TonThu và ThuThanhCong'); return res; }
+      var ton = DS[pr.ton], tc = DS[pr.tc];
+      var tm = colIdx(ton, 'ma'), cm = colIdx(tc, 'ma');
+      if (tm < 0 || cm < 0) { res.reason = 'Một trong hai thư mục chưa có cột mã để đối chiếu'; return res; }
+      var tu = colIdx(ton, 'buu-cuc'), cu = colIdx(tc, 'buu-cuc');
+      var inRange = function (k) { return k >= sk && k <= ek; };
+      tc.keys.filter(inRange).forEach(function (k) {
+        var tr = ton.days.get(k);
+        if (!tr) return;
+        var ts = new Set(tr.map(function (x) { return x[tm]; }));
+        tc.days.get(k).forEach(function (x) {
+          if (ts.has(x[cm]) && unitOk(x[cu])) res.both.push({ ma: x[cm], d: k, unit: x[cu] });
+        });
+      });
+      for (var i = 1; i < ton.keys.length; i++) {
+        var k = ton.keys[i], kp = ton.keys[i - 1];
+        if (!inRange(k)) continue;
+        var tcDays = tc.keys.filter(function (x) { return x >= kp && x <= k; });
+        if (!tcDays.length) continue;
+        var done = new Set();
+        tcDays.forEach(function (x) { tc.days.get(x).forEach(function (r) { done.add(r[cm]); }); });
+        var now = new Set(ton.days.get(k).map(function (x) { return x[tm]; }));
+        ton.days.get(kp).forEach(function (x) {
+          if (!now.has(x[tm]) && !done.has(x[tm]) && unitOk(x[tu])) res.gone.push({ ma: x[tm], d: k, unit: x[tu] });
+        });
       }
-      await saveIndex();
-      var first = IMP.order[0];
-      IMP = null;
-      busy(false);
-      PER.anchor = fromKey(keys[keys.length - 1]);
-      renderSource();
-      notice('Đã lưu ' + keys.length + ' ngày: ' + keys.map(function (k) { return fmtKey(k); }).join(', ') + '.');
-      showSheet(first);
-    } catch (e) {
-      busy(false);
-      showError('Lưu không thành công: ' + (e && e.message ? e.message : e) + '. Kiểm tra quyền ghi vào thư mục rồi thử lại.');
-    }
+      [[ton, tm, tu], [tc, cm, cu]].forEach(function (t) {
+        t[0].keys.filter(inRange).forEach(function (k) {
+          t[0].days.get(k).forEach(function (x) { if (x[t[2]] == null && unitKey == null) res.noUnit.push({ ma: x[t[1]], d: k, unit: null, where: t[0].label }); });
+        });
+      });
+      res.ok = true;
+      return res;
+    });
   }
-
   /* ================================================================
      Sheet view: period data, aggregation, rendering
      ================================================================ */
@@ -1692,44 +1414,24 @@
   var SVS = {};
 
   function sv() {
-    var n = DATA.name;
+    var n = DATA.id;
     if (!SVS[n]) SVS[n] = { filters: {}, q: '', group: null, dMeasure: null, cMeasure: null, sumDim: null, sumSort: null, sortCol: -1, sortDir: 1, page: 0 };
     return SVS[n];
   }
 
-  async function rowsFor(name, cols, s, e) {
+  function rowsFor(ds, s, e) {
     var sk = dkey(s), ek = dkey(e);
-    var keys = dayKeys().filter(function (k) { return k >= sk && k <= ek && DB.index.ngay[k].sheets[name] != null; });
+    var keys = ds.keys.filter(function (k) { return k >= sk && k <= ek; });
     var rows = [];
-    for (var i = 0; i < keys.length; i++) {
-      var day = await loadDay(keys[i]);
-      var sh = day && day.sheets[name];
-      if (!sh) continue;
-      var map = cols.map(function (c) {
-        for (var j = 0; j < sh.cot.length; j++) if (sh.cot[j].ten === c.ten) return j;
-        return -1;
-      });
-      var k = keys[i];
-      sh.dong.forEach(function (r) {
-        rows.push({
-          d: k,
-          v: map.map(function (j, ci) {
-            var x = j >= 0 ? r[j] : null;
-            return x != null && cols[ci].kieu === 'date' ? parseISOLocal(x) : x;
-          })
-        });
-      });
-    }
+    keys.forEach(function (k) { ds.days.get(k).forEach(function (v) { rows.push({ d: k, v: v }); }); });
     return { keys: keys, rows: rows };
   }
 
-  async function loadSheetData(name) {
-    var tpl = DB.config.sheets[name];
-    var cols = tpl.cot.filter(function (c) { return c.vaiTro !== 'bo-qua'; });
+  function loadSheetData(id) {
+    var ds = DS[id];
     var r = curRange(), pr = prevRangeOf(PER.type, r[0], r[1]);
-    var a = await rowsFor(name, cols, r[0], r[1]);
-    var b = await rowsFor(name, cols, pr[0], pr[1]);
-    DATA = { name: name, tpl: tpl, cols: cols, range: r, prevRange: pr, keys: a.keys, rows: a.rows, prevKeys: b.keys, prevRows: b.rows };
+    var a = rowsFor(ds, r[0], r[1]), b = rowsFor(ds, pr[0], pr[1]);
+    DATA = { id: id, name: ds.label, ds: ds, tpl: ds.tpl, cols: ds.cols, range: r, prevRange: pr, keys: a.keys, rows: a.rows, prevKeys: b.keys, prevRows: b.rows };
     DATA.measures = measuresOf();
   }
 
@@ -1745,13 +1447,14 @@
     var count = { id: 'count', label: snap ? 'Số bản ghi tồn' : 'Số bản ghi', rule: snap ? 'so-du' : 'cong-don', col: -1, count: true };
     var idx = function (n) { for (var j = 0; j < cols.length; j++) if (cols[j].ten === n) return j; return -1; };
     var ratios = (tpl.tyLe || []).map(function (r) {
-      return { id: 'r:' + r.ten, label: r.ten, rule: 'ty-le', num: idx(r.tu), den: idx(r.mau), snap: snap };
-    }).filter(function (r) { return r.num >= 0 && r.den >= 0; });
+      var num = (r.tuCot || [r.tu]).map(idx), den = (r.mauCot || [r.mau]).map(idx);
+      return { id: 'r:' + r.ten, label: r.ten, rule: 'ty-le', num: num, den: den };
+    }).filter(function (r) { return r.num.length && r.den.length && r.num.concat(r.den).every(function (j) { return j >= 0; }); });
     var list = [];
     if (hasId || !nums.length) list.push(count);
     nums.forEach(function (m) {
       list.push(m);
-      ratios.forEach(function (r) { if (r.num === m.col) list.push(r); });
+      ratios.forEach(function (r) { if (r.num[0] === m.col) list.push(r); });
     });
     ratios.forEach(function (r) { if (list.indexOf(r) < 0) list.push(r); });
     if (list.indexOf(count) < 0) list.push(count);
@@ -1779,8 +1482,18 @@
     });
     return out;
   }
+  function colMeasure(j) { return { rule: DATA.cols[j].vaiTro, col: j }; }
+  function ratioPart(j) {
+    var r = DATA.cols[j].vaiTro;
+    return { rule: r === 'so-du' && CFG.cachTinhTyLe !== 'cuoi-ky' ? 'cong-don' : r, col: j };
+  }
   function dayValue(a, m) {
-    if (m.rule === 'ty-le') return a && a.s[m.den] ? a.s[m.num] / a.s[m.den] * 100 : null;
+    if (m.rule === 'ty-le') {
+      var sn = 0, sd = 0;
+      for (var i = 0; i < m.num.length; i++) { var x = dayValue(a, colMeasure(m.num[i])); if (x == null) return null; sn += x; }
+      for (var k = 0; k < m.den.length; k++) { var y = dayValue(a, colMeasure(m.den[k])); if (y == null) return null; sd += y; }
+      return sd ? sn / sd * 100 : null;
+    }
     if (m.rule === 'trung-binh') return a && a.n[m.col] ? a.s[m.col] / a.n[m.col] : null;
     if (!a) return 0;
     if (m.count) return a.c;
@@ -1795,9 +1508,10 @@
     var res = { days: keys.length, max: nn.length ? Math.max.apply(null, nn) : null, min: nn.length ? Math.min.apply(null, nn) : null };
     var use = m.snap ? keys.slice(-1) : keys;
     if (m.rule === 'ty-le') {
-      var sn = 0, sd = 0;
-      use.forEach(function (k) { var a = get(k); if (a) { sn += a.s[m.num]; sd += a.s[m.den]; } });
-      res.main = sd ? sn / sd * 100 : null;
+      var pn = 0, pd = 0, bad = false;
+      m.num.forEach(function (j) { var x = stats(dayMap, keys, ratioPart(j)).main; if (x == null) bad = true; else pn += x; });
+      m.den.forEach(function (j) { var x = stats(dayMap, keys, ratioPart(j)).main; if (x == null) bad = true; else pd += x; });
+      res.main = bad || !pd ? null : pn / pd * 100;
       res.second = null;
     } else if (m.rule === 'trung-binh') {
       var s = 0, n = 0, mx = -Infinity;
@@ -1849,21 +1563,17 @@
     renderData();
   }
 
-  async function showSheet(name) {
-    if (!DB.config.sheets[name]) return;
-    VIEW = { mode: 'sheet', sheet: name };
+  function showSheet(id) {
+    if (!DS[id]) return;
+    VIEW = { mode: 'sheet', sheet: id };
     showView('sheet');
     renderNav();
-    $('viewSheet').classList.add('busy');
-    try { await loadSheetData(name); }
-    finally { $('viewSheet').classList.remove('busy'); }
+    loadSheetData(id);
     renderSheet();
   }
-  async function reloadPeriod() {
+  function reloadPeriod() {
     if (VIEW.mode !== 'sheet' || !DATA) return;
-    $('viewSheet').classList.add('busy');
-    try { await loadSheetData(DATA.name); }
-    finally { $('viewSheet').classList.remove('busy'); }
+    loadSheetData(DATA.id);
     renderSheet();
   }
 
@@ -1876,7 +1586,7 @@
     if (custom) { $('fromDate').value = dkey(r[0]); $('toDate').value = dkey(r[1]); }
     var L = latestDate();
     $('nextPeriod').disabled = !L || r[1] >= L;
-    var ks = dayKeys();
+    var ks = ALLKEYS;
     $('prevPeriod').disabled = !ks.length || dkey(r[0]) <= ks[0];
     var end = L && r[1] > L ? L : r[1];
     var expected = end >= r[0] ? daysBetween(r[0], end) + 1 : 0;
@@ -1899,7 +1609,9 @@
   function renderSheet() {
     var st = sv(), tpl = DATA.tpl;
     $('pageTitle').textContent = DATA.name;
-    $('pageMeta').textContent = (tpl.kieu === 'so-du' ? 'Mỗi ngày là số dư tại thời điểm' : 'Mỗi ngày là số phát sinh trong ngày') +
+    $('pageMeta').textContent = (DATA.id === OVERVIEW
+      ? 'Tự tính từ các thư mục ' + DATA.ds.sources.join(', ')
+      : 'Thư mục ' + DATA.id + ' · ' + (tpl.kieu === 'so-du' ? 'mỗi ngày là số dư tại thời điểm' : 'mỗi ngày là số phát sinh trong ngày')) +
       ' · ' + fmtNum(DATA.rows.length) + ' dòng trong kỳ';
     renderPeriodBar();
 
@@ -1917,7 +1629,7 @@
     fillSelect($('sumDimSel'), dimItems, st.sumDim);
     $('donutCard').hidden = !dims.length || !donutMs.length;
     $('sumCard').hidden = !dims.length;
-    var opt = DB.config.tuyChonBang;
+    var opt = CFG.tuyChonBang;
     Array.prototype.forEach.call($('sumOpts').querySelectorAll('input'), function (i) { i.checked = !!opt[i.dataset.opt]; });
     $('searchInput').value = st.q;
     renderFilters(dims);
@@ -1979,6 +1691,8 @@
     renderCols(rows, all);
     renderSummary(rows, prev);
     renderDetail();
+    $('recCard').hidden = DATA.id !== OVERVIEW;
+    if (DATA.id === OVERVIEW) renderRec();
   }
 
   /* ---------- KPIs ---------- */
@@ -1996,7 +1710,7 @@
   function renderKpis(all, pall) {
     var box = $('kpis');
     box.textContent = '';
-    DATA.measures.slice(0, 4).forEach(function (m) {
+    DATA.measures.slice(0, DATA.id === OVERVIEW ? 6 : 4).forEach(function (m) {
       var c = stats(all, DATA.keys, m), p = stats(pall, DATA.prevKeys, m);
       var card = el('div', 'card kpi');
       card.appendChild(el('div', 'kpi-label', m.label));
@@ -2287,7 +2001,7 @@
     thead.textContent = ''; tbody.textContent = '';
     if (!st.sumDim) return;
     var j = colIndex(st.sumDim);
-    var opt = DB.config.tuyChonBang;
+    var opt = CFG.tuyChonBang;
     var ms = DATA.measures;
     var keyFn = function (r) { return keyOf(r.v[j]); };
     var cur = accumulate(rows, keyFn), prv = accumulate(prevRows, keyFn);
@@ -2425,71 +2139,530 @@
     $('nextBtn').disabled = st.page >= pages - 1;
   }
 
-  /* ================================================================
-     Storage view: what is on disk, which days are saved
-     ================================================================ */
-  async function showStorage() {
-    VIEW = { mode: 'storage' };
-    showView('storage');
-    renderNav();
-    var s = DB.store, ks = dayKeys();
-    $('storageMeta').textContent = (s.kind === 'folder' ? 'Thư mục “' + s.name + '”' : s.sample ? 'Dữ liệu mẫu trong bộ nhớ' : 'Bộ nhớ tạm, chưa lưu ra thư mục') +
-      ' · ' + ks.length + ' ngày';
 
-    var act = $('storageActions');
-    act.textContent = '';
-    var mk = function (label, cls, fn) { var b = el('button', 'btn' + (cls ? ' ' + cls : ''), label); b.type = 'button'; b.addEventListener('click', fn); act.appendChild(b); return b; };
-    if (s.kind !== 'folder') {
-      if (REMEMBERED) mk('Mở lại thư mục “' + REMEMBERED.name + '”', 'btn-primary', reopenRemembered);
-      mk(REMEMBERED ? 'Chọn thư mục khác' : 'Chọn thư mục lưu dữ liệu', REMEMBERED ? '' : 'btn-primary', chooseFolder);
-    } else {
-      mk('Tải dữ liệu', 'btn-primary', function () { $('fileInput').click(); });
-      mk('Đổi thư mục', '', chooseFolder);
-      mk('Quét lại thư mục', '', async function () {
-        busy(true);
-        try { await rebuildIndex(); notice('Đã quét lại: ' + dayKeys().length + ' ngày.'); }
-        catch (e) { showError('Quét lại không thành công: ' + e.message); }
-        busy(false);
-        renderSource(); showStorage();
-      });
-    }
-    await renderTree();
-    renderDaysTable();
-    var box = $('jsonBox');
-    box.textContent = '';
-    if (ks.length) {
-      var last = ks[ks.length - 1];
-      var text = await s.read(dayPath(last));
-      if (text == null && DB.cache.get(last)) text = dayToText(DB.cache.get(last));
-      var lines = (text || '').split('\n');
-      box.textContent = '// ' + dayPath(last) + '\n' + lines.slice(0, 40).join('\n') + (lines.length > 40 ? '\n    … (' + fmtNum(lines.length - 40) + ' dòng nữa)' : '');
-    } else box.textContent = 'Chưa có tệp dữ liệu nào.';
+  /* ================================================================
+     UI plumbing
+     ================================================================ */
+  var VIEW = { mode: 'sheet', sheet: null };
+
+  function showError(msg) { var e = $('errorBox'); e.textContent = msg || ''; e.hidden = !msg; }
+  function notice(msg) { var e = $('noticeBox'); e.textContent = msg || ''; e.hidden = !msg; }
+  function busy(on) { $('app').classList.toggle('busy', !!on); }
+  function showView(name) {
+    ['Sheet', 'Update', 'Report'].forEach(function (v) { $('view' + v).hidden = v.toLowerCase() !== name; });
+    $('sampleBanner').hidden = SRC.mode !== 'sample';
+    hideTip();
   }
 
-  async function renderTree() {
-    var s = DB.store, box = $('treeBox');
+  var tip = $('tip');
+  function showTip(x, y, value, label, sub, color) {
+    tip.textContent = '';
+    tip.style.setProperty('--tip-key', color || 'var(--series)');
+    tip.appendChild(el('div', 'tip-value', value));
+    tip.appendChild(el('div', 'tip-label', label));
+    if (sub) tip.appendChild(el('div', 'tip-sub', sub));
+    tip.hidden = false;
+    var w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.max(8, Math.min(x + 14, window.innerWidth - w - 8)) + 'px';
+    tip.style.top = (y - h - 12 < 8 ? y + 16 : y - h - 12) + 'px';
+  }
+  function hideTip() { tip.hidden = true; }
+  function centerOf(node) { var b = node.getBoundingClientRect(); return [b.left + b.width / 2, b.top]; }
+
+  var ICONS = {
+    refresh: '<path d="M13 3v3.5H9.5M3 13V9.5h3.5M12.6 6.5A5 5 0 0 0 3.6 5.2M3.4 9.5a5 5 0 0 0 9 1.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+    report: '<path d="M4 2h6l3 3v9H4zM10 2v3h3M6.5 8.5h4M6.5 11h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>'
+  };
+  function navButton(label, opts) {
+    var b = el('button', 'nav-item');
+    b.type = 'button';
+    if (opts.icon) {
+      var holder = document.createElement('span');
+      holder.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true">' + ICONS[opts.icon] + '</svg>';
+      b.appendChild(holder.firstChild);
+    } else {
+      var c = el('span', null, '›'); c.setAttribute('aria-hidden', 'true'); c.style.fontSize = '11px'; c.style.opacity = '0.7';
+      b.appendChild(c);
+    }
+    b.appendChild(el('span', null, label));
+    if (opts.tag) b.appendChild(el('span', 'nav-tag', opts.tag));
+    if (opts.current) b.setAttribute('aria-current', 'page');
+    b.addEventListener('click', opts.onClick);
+    return b;
+  }
+  function renderNav() {
+    var nav = $('nav');
+    nav.textContent = '';
+    if (DS_ORDER.length) {
+      nav.appendChild(el('div', 'nav-section', 'Số liệu'));
+      DS_ORDER.forEach(function (id) {
+        nav.appendChild(navButton(DS[id].label, {
+          current: VIEW.mode === 'sheet' && VIEW.sheet === id,
+          onClick: function () { notice(''); showSheet(id); }
+        }));
+      });
+    }
+    nav.appendChild(el('div', 'nav-section', 'Quản lý'));
+    nav.appendChild(navButton('Cập nhật dữ liệu', { icon: 'refresh', current: VIEW.mode === 'update', onClick: doUpdate }));
+    nav.appendChild(navButton('Tạo báo cáo', {
+      icon: 'report', tag: 'bước sau', current: VIEW.mode === 'report',
+      onClick: function () { VIEW = { mode: 'report' }; showView('report'); renderNav(); }
+    }));
+    var cur = nav.querySelector('[aria-current="page"]');
+    if (cur && cur.scrollIntoView && !window.matchMedia('(min-width: 768px)').matches) cur.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+  function fmtStamp(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ' ' + fmtDate(d);
+  }
+  function renderSource() {
+    var chip = $('modeChip');
+    chip.className = 'chip-mode ' + (SRC.mode === 'sample' ? 'sample' : 'folder');
+    chip.textContent = SRC.mode === 'sample' ? 'DỮ LIỆU MẪU' : SRC.mode === 'folder' ? 'THƯ MỤC ĐÃ LIÊN KẾT' : 'TỆP ĐÃ CHỌN';
+    $('srcName').textContent = SRC.mode === 'sample' ? '4 thư mục, 6 bưu cục, tháng 8 – 9/2026' : SRC.name || 'Thư mục dữ liệu';
+    var parts = [];
+    if (SRC.lastUpdate) parts.push('Cập nhật ' + fmtStamp(SRC.lastUpdate));
+    parts.push(fmtNum(FILES.size) + ' tệp');
+    if (ALLKEYS.length) parts.push(fmtKey(ALLKEYS[0], true) + ' – ' + fmtKey(ALLKEYS[ALLKEYS.length - 1]));
+    $('srcMeta').textContent = parts.join(' · ');
+    $('pickBtn').lastChild.textContent = SRC.mode === 'sample' ? ' Liên kết thư mục dữ liệu' : ' Cập nhật dữ liệu';
+  }
+  function afterLoad(goUpdate) {
+    PER.anchor = latestDate() || new Date();
+    renderSource();
+    if (!goUpdate && DS_ORDER.length) {
+      var keep = VIEW.mode === 'sheet' && DS[VIEW.sheet] ? VIEW.sheet : DS_ORDER[0];
+      showSheet(keep);
+    } else showUpdate();
+  }
+
+  /* ================================================================
+     Updating: re-read the linked folder (or files picked on this device)
+     ================================================================ */
+  function folderSupported() {
+    return typeof window.showDirectoryPicker === 'function' && window.top === window.self;
+  }
+  function dirInputSupported() { return 'webkitdirectory' in document.createElement('input'); }
+
+  async function doUpdate() {
+    showError(''); notice('');
+    if (SRC.mode === 'folder' && ROOT) {
+      var p = 'denied';
+      try {
+        p = await ROOT.queryPermission({ mode: 'read' });
+        if (p !== 'granted') p = await ROOT.requestPermission({ mode: 'read' });
+      } catch (e) { p = 'denied'; }
+      if (p !== 'granted') {
+        showError('Chưa được cấp quyền đọc thư mục “' + ROOT.name + '”. Bấm Cập nhật dữ liệu lần nữa và chọn Cho phép, hoặc liên kết lại thư mục.');
+        showUpdate();
+        return;
+      }
+      await runFolderScan(ROOT);
+      return;
+    }
+    if (SRC.mode === 'files') { pickFiles(); return; }
+    await linkFolder();
+  }
+
+  async function linkFolder() {
+    showError('');
+    if (!folderSupported()) { pickFiles(); return; }
+    var h;
+    try { h = await window.showDirectoryPicker({ id: 'dhcl-nguon', mode: 'read' }); }
+    catch (e) { if (e && e.name !== 'AbortError') showError('Không mở được thư mục: ' + e.message + '.'); return; }
+    var same = false;
+    try { same = !!(ROOT && SRC.mode === 'folder' && await ROOT.isSameEntry(h)); } catch (e) { same = false; }
+    if (!same) await resetData();
+    ROOT = h;
+    await kvSet('root', h);
+    SRC.mode = 'folder';
+    SRC.name = h.name;
+    await runFolderScan(h);
+  }
+
+  async function resetData() {
+    var fromSample = SRC.mode === 'sample';
+    FILES = new Map();
+    await filesClear();
+    if (fromSample) CFG = (await kvGet('config')) || emptyCfg();
+  }
+
+  async function runFolderScan(h) {
+    busy(true);
+    try {
+      var list = [];
+      await listDataFiles(h, '', list, 0);
+      var rep = await scanEntries(list.map(function (x) { return { path: x.path, getFile: function () { return x.handle.getFile(); } }; }), true);
+      await finishUpdate(rep);
+    } catch (e) {
+      progress('');
+      showError('Không đọc được thư mục: ' + (e && e.message ? e.message : e) + '.');
+    }
+    busy(false);
+  }
+
+  function pickFiles() {
+    var inp = dirInputSupported() ? $('dirInput') : $('fileInput');
+    inp.click();
+  }
+  function guessPath(name) {
+    var k = normKey(name);
+    var hit = Object.keys(STD).filter(function (s) { return k.indexOf(s) === 0; })[0];
+    return hit ? STD[hit].folder + '/' + name : name;
+  }
+  async function onPicked(list) {
+    var files = Array.prototype.slice.call(list || []);
+    if (!files.length) return;
+    if (SRC.mode === 'sample') await resetData();
+    var root = '';
+    var entries = files.map(function (f) {
+      var rel = f.webkitRelativePath || '';
+      var path;
+      if (rel) { var parts = rel.split('/'); root = parts[0]; path = parts.slice(1).join('/'); }
+      else path = guessPath(f.name);
+      return { path: path, getFile: function () { return Promise.resolve(f); } };
+    });
+    SRC.mode = 'files';
+    SRC.name = root || 'Các tệp đã chọn';
+    busy(true);
+    try { await finishUpdate(await scanEntries(entries, !!root)); }
+    catch (e) { progress(''); showError('Không đọc được tệp: ' + (e && e.message ? e.message : e) + '.'); }
+    busy(false);
+  }
+
+  async function finishUpdate(rep) {
+    SRC.lastUpdate = new Date().toISOString();
+    SRC.report = rep;
+    await kvSet('source', { mode: SRC.mode, name: SRC.name, lastUpdate: SRC.lastUpdate, report: rep });
+    buildDatasets();
+    afterLoad(true);
+    notice('Đã cập nhật: đọc mới ' + rep.read + ' tệp, dùng lại ' + rep.reused + ' tệp đã đọc' +
+      (rep.removed ? ', bỏ ' + rep.removed + ' tệp không còn trong thư mục' : '') +
+      (rep.failed.length ? ', ' + rep.failed.length + ' tệp lỗi' : '') + '.');
+  }
+
+  /* ================================================================
+     "Cập nhật dữ liệu" page
+     ================================================================ */
+  var SETUP = null;
+
+  function showUpdate() {
+    VIEW = { mode: 'update' };
+    showView('update');
+    renderNav();
+    renderUpdate();
+  }
+
+  function missingDays(keys) {
+    if (!keys.length) return [];
+    var out = [];
+    for (var d = fromKey(keys[0]), end = fromKey(keys[keys.length - 1]); d <= end; d = addDays(d, 1)) {
+      if (keys.indexOf(dkey(d)) < 0) out.push(d);
+    }
+    return out;
+  }
+
+  function renderUpdate() {
+    $('updMeta').textContent = SRC.mode === 'sample' ? 'Đang dùng dữ liệu mẫu' : (SRC.lastUpdate ? 'Lần cập nhật gần nhất ' + fmtStamp(SRC.lastUpdate) : '');
+    var box = $('updSource');
     box.textContent = '';
-    var lines = [];
-    var root = s.kind === 'folder' ? s.name + '/' : (s.sample ? '(dữ liệu mẫu trong bộ nhớ)/' : '(bộ nhớ tạm)/');
-    lines.push([root, s.kind === 'folder' ? 'thư mục bạn đã chọn' : 'chưa ghi ra máy']);
-    var nSheets = sheetNames().length, nDays = dayKeys().length;
-    lines.push(['├─ ' + CONFIG_FILE, 'mẫu nhận diện ' + nSheets + ' sheet, quy tắc tính từng cột']);
-    lines.push(['├─ ' + INDEX_FILE, 'danh sách ' + nDays + ' ngày đã lưu']);
-    var goc = await s.list('goc');
-    lines.push(['├─ goc/', 'file gốc, giữ nguyên như khi tải lên']);
-    if (!goc.length) lines.push(['│  └─ (trống)', s.sample ? 'dữ liệu mẫu không có file gốc' : '']);
-    for (var i = 0; i < goc.length; i++) {
-      var files = await s.list('goc/' + goc[i].name);
-      var lastG = i === goc.length - 1;
-      lines.push(['│  ' + (lastG ? '└─ ' : '├─ ') + goc[i].name + '/', files.length + ' tệp' + (files.length ? ', ví dụ “' + files[0].name + '”' : '')]);
+    var line = el('div', 'src-line');
+    line.appendChild(el('strong', null, SRC.mode === 'sample' ? 'Chưa liên kết thư mục dữ liệu' : (SRC.mode === 'folder' ? 'Thư mục “' + SRC.name + '”' : SRC.name)));
+    line.appendChild(el('span', 'row-count', fmtNum(FILES.size) + ' tệp · ' + fmtNum(ALLKEYS.length) + ' ngày có dữ liệu'));
+    box.appendChild(line);
+    var act = el('div', 'action-bar');
+    var mk = function (label, cls, fn) { var b = el('button', 'btn' + (cls ? ' ' + cls : ''), label); b.type = 'button'; b.addEventListener('click', fn); act.appendChild(b); };
+    if (SRC.mode === 'sample') mk('Liên kết thư mục dữ liệu', 'btn-primary', linkFolder);
+    else {
+      mk('Cập nhật ngay', 'btn-primary', doUpdate);
+      mk(SRC.mode === 'folder' ? 'Đổi thư mục' : 'Chọn lại thư mục', '', linkFolder);
+      if (!folderSupported() || SRC.mode === 'files') mk('Chọn từng tệp', '', function () { $('fileInput').click(); });
     }
-    var dl = await s.list('du-lieu');
-    lines.push(['└─ du-lieu/', 'bản đã chuẩn hóa theo ngày, app đọc phần này để tính']);
-    for (var k = 0; k < dl.length; k++) {
-      var f2 = await s.list('du-lieu/' + dl[k].name);
-      var lastD = k === dl.length - 1;
-      lines.push(['   ' + (lastD ? '└─ ' : '├─ ') + dl[k].name + '/', f2.length + ' tệp' + (f2.length ? ': ' + f2[0].name + (f2.length > 1 ? ' … ' + f2[f2.length - 1].name : '') : '')]);
+    box.appendChild(act);
+    var notes = el('ul', 'plain-list');
+    notes.appendChild(el('li', null, 'App chỉ đọc, không sửa, không di chuyển, không xóa tệp nào trong thư mục của bạn.'));
+    notes.appendChild(el('li', null, folderSupported()
+      ? 'Trình duyệt này nhớ thư mục đã liên kết. Lần sau chỉ cần bấm Cập nhật dữ liệu; nếu trình duyệt hỏi quyền, bấm Cho phép.'
+      : 'Trình duyệt hoặc thiết bị này không nhớ được thư mục. Mỗi lần cập nhật, chọn lại thư mục (hoặc các tệp mới). Dữ liệu đã đọc vẫn được nhớ trên thiết bị này.'));
+    notes.appendChild(el('li', null, 'Chỉ những tệp mới hoặc vừa sửa mới được đọc lại, nên các lần cập nhật sau nhanh hơn lần đầu.'));
+    box.appendChild(notes);
+
+    renderDatasetTable();
+    renderSetup();
+    renderOverviewRules();
+    renderTrees();
+    renderIssues();
+  }
+
+  function renderDatasetTable() {
+    var t = $('updTable'), thead = t.tHead, tbody = t.tBodies[0];
+    thead.textContent = ''; tbody.textContent = '';
+    var hr = document.createElement('tr');
+    ['Thư mục', 'Hiển thị là', 'Kiểu', 'Tệp', 'Ngày có dữ liệu', 'Ngày thiếu', 'Liên kết theo mã', 'Thiết lập cột'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
+    thead.appendChild(hr);
+    var ids = DS_ORDER.filter(function (id) { return id !== OVERVIEW; });
+    ids.forEach(function (id) {
+      var ds = DS[id], tr = document.createElement('tr');
+      tr.appendChild(el('td', null, id + '/'));
+      tr.appendChild(el('td', null, ds.label));
+      tr.appendChild(el('td', 'rule-note', ds.tpl.kieu === 'so-du' ? 'Số dư (danh sách tồn)' : 'Phát sinh trong ngày'));
+      tr.appendChild(el('td', 'num', fmtNum(ds.files.length)));
+      tr.appendChild(el('td', null, ds.keys.length ? fmtKey(ds.keys[0], true) + ' – ' + fmtKey(ds.keys[ds.keys.length - 1]) + ' (' + ds.keys.length + ')' : '–'));
+      var miss = missingDays(ds.keys);
+      var mtd = el('td', 'rule-note', miss.length ? miss.slice(0, 5).map(function (d) { return pad(d.getDate()) + '/' + pad(d.getMonth() + 1); }).join(', ') + (miss.length > 5 ? ' … (' + miss.length + ' ngày)' : '') : 'Đủ');
+      if (miss.length) mtd.style.color = 'var(--accent)';
+      tr.appendChild(mtd);
+      var L = ds.link, lt = '–';
+      if (L && colIdx(ds, 'ma') >= 0) {
+        var bits = [];
+        if (L.unitFilled) bits.push('điền bưu cục ' + fmtNum(L.unitFilled) + ' dòng');
+        if (L.unitMissing) bits.push(fmtNum(L.unitMissing) + ' dòng chưa rõ bưu cục');
+        if (L.added.length) bits.push('thêm cột ' + L.added.join(', '));
+        if (L.attrFilled) bits.push('điền ' + fmtNum(L.attrFilled) + ' ô');
+        lt = bits.length ? bits.join('; ') : 'Không cần bổ sung';
+      } else if (L) lt = 'Không có cột mã, chưa liên kết được';
+      tr.appendChild(el('td', 'rule-note', lt));
+      var td = document.createElement('td');
+      td.appendChild(el('span', 'chip ' + (ds.tpl.xacNhan ? 'ok' : 'new'), ds.tpl.xacNhan ? 'Đã xác nhận' : 'Chưa xác nhận'));
+      var b = el('button', 'btn btn-sm', 'Thiết lập'); b.type = 'button'; b.style.marginLeft = '8px';
+      b.addEventListener('click', function () { openSetup(id); });
+      td.appendChild(b);
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+    });
+    var present = new Set(ids.map(normKey));
+    Object.keys(STD).forEach(function (k) {
+      if (present.has(k)) return;
+      var tr = document.createElement('tr');
+      tr.appendChild(el('td', null, STD[k].folder + '/'));
+      tr.appendChild(el('td', null, STD[k].label));
+      var td = el('td');
+      td.colSpan = 6;
+      td.appendChild(el('span', 'chip bad', 'Chưa thấy thư mục này'));
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+    });
+    $('updNote').textContent = 'Mỗi thư mục con là một mục ở cột trái. Ngày của mỗi tệp lấy từ tên tệp.';
+  }
+
+  /* ---------- Column setup for one folder ---------- */
+  function openSetup(id) {
+    var ds = DS[id], tpl = CFG.datasets[id];
+    var sample = null;
+    for (var i = ds.files.length - 1; i >= 0 && !sample; i--) sample = largestTable(ds.files[i]);
+    SETUP = {
+      id: id,
+      t: {
+        ten: tpl.nhan || dsLabel(id), kieu: tpl.kieu,
+        cot: tpl.cot.map(function (c) { return { ten: c.ten, kieu: c.kieu, vaiTro: c.vaiTro, moi: c.moi }; }),
+        tyLe: (tpl.tyLe || []).map(function (r) { return Object.assign({}, r); }),
+        sample: sample, xacNhan: tpl.xacNhan
+      }
+    };
+    renderSetup();
+    $('updSetup').scrollIntoView({ block: 'start' });
+  }
+  function renderSetup() {
+    var box = $('updSetup');
+    box.textContent = '';
+    if (!SETUP) return;
+    box.appendChild(setupCard(SETUP.t));
+  }
+  function sampleValues(table, colName) {
+    if (!table) return '';
+    var j = -1;
+    table.columns.forEach(function (c, k) { if (c.name === colName) j = k; });
+    if (j < 0) return '';
+    var seen = [], set = {};
+    for (var i = 0; i < table.rows.length && seen.length < 3; i++) {
+      var v = table.rows[i].v[j];
+      if (v == null) continue;
+      var s = fmtAny(v);
+      if (!set[s]) { set[s] = 1; seen.push(s); }
     }
+    return seen.join(' · ');
+  }
+  function setupCard(t) {
+    var redraw = function () { renderSetup(); };
+    var card = el('section', 'card table-card sheet-card');
+    var head = el('div', 'card-head');
+    head.appendChild(el('h3', 'card-title', 'Thiết lập cột: ' + SETUP.id + '/'));
+    head.appendChild(el('span', 'chip ' + (t.xacNhan ? 'ok' : 'new'), t.xacNhan ? 'Đã xác nhận' : 'App đang tự đoán, cần bạn xác nhận'));
+    card.appendChild(head);
+    var meta = el('div', 'meta-row');
+    var nameIn = document.createElement('input'); nameIn.type = 'text'; nameIn.value = t.ten;
+    nameIn.addEventListener('input', function () { t.ten = nameIn.value.trim(); });
+    meta.appendChild(field('Tên hiển thị', nameIn));
+    var kindSel = document.createElement('select');
+    fillSelect(kindSel, [
+      ['phat-sinh', 'Số phát sinh trong ngày (nhiều ngày: cộng các ngày)'],
+      ['so-du', 'Số dư tại thời điểm, ví dụ danh sách tồn (nhiều ngày: lấy ngày cuối kỳ)']
+    ], t.kieu);
+    kindSel.addEventListener('change', function () {
+      t.kieu = kindSel.value;
+      t.cot.forEach(function (c) {
+        if (t.kieu === 'so-du' && c.vaiTro === 'cong-don') c.vaiTro = 'so-du';
+        else if (t.kieu === 'phat-sinh' && c.vaiTro === 'so-du' && !STOCK_NAME.test(c.ten)) c.vaiTro = 'cong-don';
+      });
+      redraw();
+    });
+    meta.appendChild(field('Mỗi tệp ngày của thư mục này chứa', kindSel));
+    card.appendChild(meta);
+
+    var wrap = el('div', 'table-scroll');
+    var table = document.createElement('table');
+    var thead = document.createElement('thead'), tbody = document.createElement('tbody');
+    var hr = document.createElement('tr');
+    ['Cột trong tệp', 'Giá trị ví dụ', 'Nhận diện', 'Vai trò', 'Cách tính khi xem nhiều ngày'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
+    thead.appendChild(hr);
+    t.cot.forEach(function (c) {
+      var tr = document.createElement('tr');
+      var name = el('td', null, c.ten);
+      if (c.moi) { var ch = el('span', 'chip new', 'mới'); ch.style.marginLeft = '6px'; name.appendChild(ch); }
+      tr.appendChild(name);
+      tr.appendChild(el('td', 'sample-vals', sampleValues(t.sample, c.ten)));
+      var kd = document.createElement('td');
+      kd.appendChild(el('span', 'chip' + (c.kieu === 'number' ? ' ok' : c.kieu === 'date' ? ' new' : ''), KIEU_LABEL[c.kieu]));
+      tr.appendChild(kd);
+      var rd = document.createElement('td');
+      var sel = document.createElement('select');
+      sel.setAttribute('aria-label', 'Vai trò của cột ' + c.ten);
+      fillSelect(sel, ROLE_OPTIONS[c.kieu].map(function (r) { return [r, ROLE_LABEL[r]]; }), c.vaiTro);
+      rd.appendChild(sel);
+      tr.appendChild(rd);
+      var rule = el('td', 'rule-note', ROLE_RULE[c.vaiTro]);
+      tr.appendChild(rule);
+      sel.addEventListener('change', function () {
+        c.vaiTro = sel.value;
+        if (c.vaiTro === 'buu-cuc') { t.cot.forEach(function (o) { if (o !== c && o.vaiTro === 'buu-cuc') o.vaiTro = 'nhom'; }); redraw(); return; }
+        rule.textContent = ROLE_RULE[c.vaiTro];
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(thead); table.appendChild(tbody);
+    wrap.appendChild(table);
+    card.appendChild(wrap);
+
+    var nums = t.cot.filter(function (c) { return c.kieu === 'number'; });
+    if (nums.length >= 2) {
+      var rh = el('div', 'card-head');
+      rh.appendChild(el('h4', 'card-title', 'Chỉ tiêu tỷ lệ'));
+      card.appendChild(rh);
+      var rbox = el('div', 'ratios');
+      rbox.appendChild(el('p', 'card-note', 'Tỷ lệ của một kỳ = tổng tử số trong kỳ / tổng mẫu số trong kỳ × 100. App không lấy trung bình các tỷ lệ ngày.'));
+      t.tyLe.forEach(function (r, i) {
+        var row = el('div', 'ratio-row');
+        var nm = document.createElement('input'); nm.type = 'text'; nm.value = r.ten; nm.setAttribute('aria-label', 'Tên tỷ lệ');
+        nm.addEventListener('input', function () { r.ten = nm.value.trim(); });
+        var items = nums.map(function (c) { return [c.ten, c.ten]; });
+        var tu = document.createElement('select'); fillSelect(tu, items, r.tu); tu.setAttribute('aria-label', 'Tử số');
+        var mau = document.createElement('select'); fillSelect(mau, items, r.mau); mau.setAttribute('aria-label', 'Mẫu số');
+        tu.addEventListener('change', function () { r.tu = tu.value; });
+        mau.addEventListener('change', function () { r.mau = mau.value; });
+        var del = el('button', 'btn btn-sm btn-danger', 'Xóa'); del.type = 'button';
+        del.addEventListener('click', function () { t.tyLe.splice(i, 1); redraw(); });
+        row.appendChild(nm); row.appendChild(el('span', null, '='));
+        row.appendChild(tu); row.appendChild(el('span', null, '/'));
+        row.appendChild(mau); row.appendChild(el('span', null, '× 100'));
+        row.appendChild(del);
+        rbox.appendChild(row);
+      });
+      var add = el('button', 'btn btn-sm', 'Thêm tỷ lệ'); add.type = 'button';
+      add.style.justifySelf = 'start';
+      add.addEventListener('click', function () { t.tyLe.push({ ten: 'Tỷ lệ mới', tu: nums[0].ten, mau: nums[1].ten }); redraw(); });
+      rbox.appendChild(add);
+      card.appendChild(rbox);
+    }
+    var bar = el('div', 'action-bar');
+    bar.style.padding = '0 16px 16px';
+    var save = el('button', 'btn btn-primary', 'Lưu thiết lập'); save.type = 'button';
+    save.addEventListener('click', function () {
+      CFG.datasets[SETUP.id] = {
+        nhan: t.ten || dsLabel(SETUP.id), kieu: t.kieu, xacNhan: true,
+        cot: t.cot.map(function (c) { return { ten: c.ten, kieu: c.kieu, vaiTro: c.vaiTro }; }),
+        tyLe: t.tyLe.filter(function (r) { return r.ten && r.tu && r.mau && r.tu !== r.mau; })
+      };
+      saveCfg();
+      var id = SETUP.id;
+      SETUP = null;
+      buildDatasets();
+      renderSource();
+      renderUpdate();
+      notice('Đã lưu thiết lập cho thư mục ' + id + '. Số liệu đã được tính lại.');
+    });
+    var close = el('button', 'btn', 'Đóng'); close.type = 'button';
+    close.addEventListener('click', function () { SETUP = null; renderSetup(); });
+    bar.appendChild(save); bar.appendChild(close);
+    card.appendChild(bar);
+    return card;
+  }
+
+  function renderOverviewRules() {
+    var box = $('ovRules');
+    box.textContent = '';
+    var ov = DS[OVERVIEW];
+    if (!ov) { box.appendChild(el('li', null, 'Chưa có thư mục nào có cột bưu cục để lập Tổng quan.')); return; }
+    box.appendChild(el('li', null, 'Mỗi dòng là một bưu cục trong một ngày. Bưu cục lấy từ cột Bưu cục của từng thư mục; dòng thiếu bưu cục được điền nhờ mã bưu gửi ở thư mục khác.'));
+    ov.cols.slice(1).forEach(function (c) {
+      box.appendChild(el('li', null, c.ten + ' = số dòng (số mã) trong thư mục ' + c.src + ' của ngày đó' +
+        (c.vaiTro === 'so-du' ? '. Đây là số dư: xem nhiều ngày thì lấy ngày cuối kỳ.' : '. Xem nhiều ngày thì cộng các ngày.')));
+    });
+    var mode = CFG.cachTinhTyLe === 'cuoi-ky' ? 'cuoi-ky' : 'tung-ngay';
+    ov.tpl.tyLe.forEach(function (r) {
+      box.appendChild(el('li', null, r.ten + ' của một ngày = ' + r.tuCot.join(' + ') + ' / (' + r.mauCot.join(' + ') + ') × 100.'));
+    });
+    if (ov.tpl.tyLe.length) {
+      var li = el('li', null, 'Khi xem nhiều ngày, phần tồn trong mẫu số được tính theo: ');
+      var sel = document.createElement('select');
+      sel.setAttribute('aria-label', 'Cách tính tỷ lệ thành công trong kỳ');
+      fillSelect(sel, [
+        ['tung-ngay', 'Cộng tồn của từng ngày (thận trọng, sát với tỷ lệ hằng ngày)'],
+        ['cuoi-ky', 'Chỉ lấy tồn cuối kỳ (tỷ lệ cao hơn)']
+      ], mode);
+      sel.style.marginTop = '4px';
+      sel.addEventListener('change', function () { CFG.cachTinhTyLe = sel.value; saveCfg(); notice('Đã đổi cách tính tỷ lệ trong kỳ. Các trang số liệu dùng cách mới.'); });
+      li.appendChild(document.createElement('br'));
+      li.appendChild(sel);
+      box.appendChild(li);
+      box.appendChild(el('li', null, 'Đây là giả định của app. Hãy đối chiếu với công thức đơn vị đang dùng để báo cáo trước khi trình Ban Giám đốc.'));
+    }
+    box.appendChild(el('li', null, 'Ngày nào thư mục không có tệp thì chỉ tiêu của thư mục đó để trống, không tính là 0.'));
+  }
+
+  function renderTrees() {
+    var exp = $('treeExpected');
+    exp.textContent = '';
+    var lines = [
+      ['<Thư mục dữ liệu>/', 'thư mục bạn tạo và liên kết'],
+      ['├─ TonPhat/', 'danh sách bưu gửi tồn phát'],
+      ['│  ├─ TonPhat_29-09-2026.xlsx', 'ngày lấy từ tên tệp'],
+      ['│  └─ 2026-09/…', 'có thể chia thư mục con'],
+      ['├─ TonThu/', 'danh sách yêu cầu tồn thu'],
+      ['├─ PhatThanhCong/', 'bưu gửi phát thành công trong ngày'],
+      ['└─ ThuThanhCong/', 'yêu cầu thu thành công trong ngày']
+    ];
+    writeTree(exp, lines);
+    var act = $('treeActual');
+    act.textContent = '';
+    var groups = {};
+    var outside = [];
+    FILES.forEach(function (rec) { if (rec.dataset) (groups[rec.dataset] = groups[rec.dataset] || []).push(rec); else outside.push(rec); });
+    var ids = Object.keys(groups).sort(function (a, b) { return dsOrder(a) - dsOrder(b) || a.localeCompare(b); });
+    var out = [[(SRC.mode === 'sample' ? '(dữ liệu mẫu)' : SRC.name || 'Thư mục') + '/', fmtNum(FILES.size) + ' tệp']];
+    ids.forEach(function (id, i) {
+      var recs = groups[id].slice().sort(function (a, b) { return a.path.localeCompare(b.path); });
+      var last = i === ids.length - 1 && !(SRC.report && SRC.report.outside.length);
+      out.push([(last ? '└─ ' : '├─ ') + id + '/', recs.length + ' tệp']);
+      var pre = last ? '   ' : '│  ';
+      out.push([pre + '├─ ' + recs[0].path.split('/').slice(1).join('/'), '']);
+      if (recs.length > 2) out.push([pre + '│  …', '']);
+      if (recs.length > 1) out.push([pre + '└─ ' + recs[recs.length - 1].path.split('/').slice(1).join('/'), '']);
+    });
+    if (SRC.report && SRC.report.outside.length) out.push(['└─ ' + SRC.report.outside.length + ' tệp nằm ngoài thư mục con', 'không được đọc']);
+    writeTree(act, out);
+  }
+  function writeTree(box, lines) {
     var width = lines.reduce(function (w, l) { return Math.max(w, l[0].length); }, 0) + 3;
     lines.forEach(function (l) {
       box.appendChild(document.createTextNode(l[0] + (l[1] ? ' '.repeat(Math.max(1, width - l[0].length)) : '')));
@@ -2498,55 +2671,99 @@
     });
   }
 
-  function renderDaysTable() {
-    var t = $('daysTable'), thead = t.tHead, tbody = t.tBodies[0];
+  function renderIssues() {
+    var t = $('issuesTable'), thead = t.tHead, tbody = t.tBodies[0];
     thead.textContent = ''; tbody.textContent = '';
-    var ks = dayKeys();
     var hr = document.createElement('tr');
-    ['Ngày dữ liệu', 'Thứ', 'Tệp gốc', 'Số dòng theo sheet', 'Lưu lúc', ''].forEach(function (h) { hr.appendChild(el('th', null, h)); });
+    ['Tệp hoặc thư mục', 'Vấn đề'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
     thead.appendChild(hr);
-    var missing = [];
-    if (ks.length) {
-      for (var d = fromKey(ks[0]), end = fromKey(ks[ks.length - 1]); d <= end; d = addDays(d, 1)) {
-        if (!DB.index.ngay[dkey(d)]) missing.push(fmtDate(d));
-      }
-    }
-    $('missingNote').textContent = ks.length
-      ? (missing.length ? 'Thiếu ' + missing.length + ' ngày: ' + missing.slice(0, 8).join(', ') + (missing.length > 8 ? '…' : '') : 'Đủ ngày từ ' + fmtKey(ks[0]) + ' đến ' + fmtKey(ks[ks.length - 1]))
-      : '';
-    ks.slice().reverse().forEach(function (k) {
-      var e = DB.index.ngay[k], tr = document.createElement('tr');
-      tr.appendChild(el('td', null, fmtKey(k)));
-      tr.appendChild(el('td', null, WEEKDAY[fromKey(k).getDay()]));
-      tr.appendChild(el('td', null, e.tenTepGoc || '–'));
-      tr.appendChild(el('td', 'rule-note', Object.keys(e.sheets).map(function (n) { return n + ' ' + fmtNum(e.sheets[n]); }).join(' · ')));
-      tr.appendChild(el('td', null, e.luuLuc ? e.luuLuc.replace('T', ' ') : '–'));
-      var td = document.createElement('td');
-      var del = el('button', 'btn btn-sm', 'Xóa'); del.type = 'button';
-      var armed = false;
-      del.addEventListener('click', async function () {
-        if (!armed) { armed = true; del.textContent = 'Bấm lần nữa để xóa'; del.classList.add('btn-danger'); return; }
-        busy(true);
-        try { await deleteDay(k); notice('Đã xóa dữ liệu ngày ' + fmtKey(k) + '.'); }
-        catch (err) { showError('Xóa không thành công: ' + err.message); }
-        busy(false);
-        renderSource(); showStorage();
-      });
-      del.addEventListener('blur', function () { armed = false; del.textContent = 'Xóa'; del.classList.remove('btn-danger'); });
-      td.appendChild(del);
-      tr.appendChild(td);
+    var rows = [];
+    FILES.forEach(function (rec) {
+      if (rec.error) rows.push([rec.path, 'Không đọc được: ' + rec.error]);
+      else if (rec.dateSrc && rec.dateSrc !== 'lấy từ tên tệp') rows.push([rec.path, 'Tên tệp không có ngày, ' + rec.dateSrc + ' (' + fmtKey(rec.dateKey) + ')']);
+      (rec.warn || []).forEach(function (w) { rows.push([rec.path, w]); });
+    });
+    DS_ORDER.forEach(function (id) {
+      var ds = DS[id];
+      ds.skipped.slice(0, 20).forEach(function (s) { rows.push([s, 'Cấu trúc khác các tệp còn lại của thư mục, chưa được đọc']); });
+      ds.newCols.slice(0, 10).forEach(function (s) { rows.push([id + '/', 'Có cột mới: ' + s + '. Đã thêm vào thiết lập, nên kiểm tra vai trò']); });
+      ds.warn.forEach(function (w) { rows.push([id + '/', w]); });
+    });
+    if (SRC.report) SRC.report.outside.forEach(function (p) { rows.push([p, 'Nằm ngoài các thư mục con nên không được đọc']); });
+    $('updIssues').hidden = !rows.length;
+    rows.slice(0, 200).forEach(function (r) {
+      var tr = document.createElement('tr');
+      tr.appendChild(el('td', null, r[0]));
+      tr.appendChild(el('td', 'rule-note', r[1]));
       tbody.appendChild(tr);
     });
   }
 
+  /* ---------- Reconciliation card on the overview ---------- */
+  var REC = null;
+  function renderRec() {
+    var unitKey = sv().filters['Bưu cục'];
+    REC = reconcile(DATA.range, unitKey == null ? null : unitKey);
+    $('recNote').textContent = periodLabel(PER.type, DATA.range[0], DATA.range[1]) + (unitKey != null ? ' · bưu cục ' + labelOf(unitKey) : ' · tất cả bưu cục');
+    var t = $('recTable'), thead = t.tHead, tbody = t.tBodies[0];
+    thead.textContent = ''; tbody.textContent = '';
+    var hr = document.createElement('tr');
+    hr.appendChild(el('th', null, 'Kiểm tra'));
+    REC.forEach(function (r) { hr.appendChild(el('th', 'num', r.label)); });
+    thead.appendChild(hr);
+    var checks = [
+      ['both', 'Vừa nằm trong danh sách tồn vừa báo thành công cùng ngày'],
+      ['gone', 'Ra khỏi danh sách tồn nhưng không thấy trong danh sách thành công (có thể chuyển hoàn, chuyển tiếp hoặc thiếu tệp)'],
+      ['noUnit', 'Dòng chưa xác định được bưu cục, kể cả sau khi liên kết mã']
+    ];
+    checks.forEach(function (c) {
+      var tr = document.createElement('tr');
+      tr.appendChild(el('td', 'rule-note', c[1]));
+      REC.forEach(function (r) {
+        var td = el('td', 'num', r.ok ? fmtNum(r[c[0]].length) : '–');
+        if (!r.ok) td.title = r.reason;
+        else if (r[c[0]].length) td.style.color = 'var(--accent)';
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    var reasons = REC.filter(function (r) { return !r.ok; }).map(function (r) { return r.label + ': ' + r.reason; });
+    $('recReason').textContent = reasons.join('. ');
+    $('recReason').hidden = !reasons.length;
+    var sel = $('recSel');
+    var prev = sel.value;
+    fillSelect(sel, checks.map(function (c) { return [c[0], c[1].split(' (')[0]]; }), prev || 'gone');
+    renderRecList();
+  }
+  function renderRecList() {
+    if (!REC) return;
+    var k = $('recSel').value;
+    var t = $('recList'), thead = t.tHead, tbody = t.tBodies[0];
+    thead.textContent = ''; tbody.textContent = '';
+    var hr = document.createElement('tr');
+    ['Mã', 'Ngày', 'Bưu cục', 'Nhóm'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
+    thead.appendChild(hr);
+    var items = [];
+    REC.forEach(function (r) { if (r.ok) r[k].forEach(function (x) { items.push([x.ma, x.d, x.unit, r.label + (x.where ? ' · ' + x.where : '')]); }); });
+    items.sort(function (a, b) { return a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : 0; });
+    items.slice(0, 100).forEach(function (x) {
+      var tr = document.createElement('tr');
+      tr.appendChild(el('td', null, x[0] == null ? '(không có mã)' : x[0]));
+      tr.appendChild(el('td', null, fmtKey(x[1])));
+      tr.appendChild(el('td', x[2] == null ? 'null' : null, x[2] == null ? '(chưa rõ)' : x[2]));
+      tr.appendChild(el('td', null, x[3]));
+      tbody.appendChild(tr);
+    });
+    $('recCount').textContent = items.length > 100 ? 'Hiện 100 / ' + fmtNum(items.length) + ' mã, mới nhất trước' : fmtNum(items.length) + ' mã';
+  }
+
   /* ================================================================
-     Sample data: a quarter of daily exports for 6 post offices (clearly marked)
+     Sample data: four folders of daily files for 6 post offices (clearly marked)
      ================================================================ */
   async function loadSample() {
-    var store = new MemoryStore('Dữ liệu mẫu');
-    store.sample = true;
-    DB.store = store; DB.config = emptyConfig(); DB.index = emptyIndex(); DB.cache = new Map();
-
+    SRC = { mode: 'sample', name: 'Dữ liệu mẫu', lastUpdate: null, report: null };
+    CFG = emptyCfg();
+    FILES = new Map();
     var seed = 20261003;
     var rnd = function () { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
     var weighted = function (arr) {
@@ -2554,92 +2771,92 @@
       for (var i = 0; i < arr.length; i++) { acc += arr[i][1]; if (r <= acc) return arr[i][0]; }
       return arr[arr.length - 1][0];
     };
-    var digits = function (n) { var s = ''; while (s.length < n) s += Math.floor(rnd() * 10); return s; };
-    var dayStr = function (d) { return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear(); };
-    var units = [['Hoàn Kiếm', 1.0], ['Cầu Giấy', 1.3], ['Đống Đa', 1.4], ['Hai Bà Trưng', 1.1], ['Long Biên', 0.8], ['Hà Đông', 1.2]];
+    var dstr = function (d) { return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear(); };
+    var dtstr = function (d, h) { return dstr(d) + ' ' + pad(h) + ':' + pad(Math.floor(rnd() * 60)); };
+    var units = [['Hoàn Kiếm', 1.0, 'HK'], ['Cầu Giấy', 1.3, 'CG'], ['Đống Đa', 1.4, 'DD'], ['Hai Bà Trưng', 1.1, 'HB'], ['Long Biên', 0.8, 'LB'], ['Hà Đông', 1.2, 'HD']];
     var services = [['Chuyển phát nhanh', 4], ['Bưu kiện', 3], ['TMĐT thu hộ', 5], ['Thư thường', 1.5]];
     var reasonsP = [['Không liên lạc được người nhận', 5], ['Người nhận hẹn phát lại', 4], ['Sai, thiếu địa chỉ', 2], ['Người nhận vắng nhà', 3], ['Thiếu nhân lực tuyến phát', 1.5]];
     var reasonsT = [['Khách chưa chuẩn bị hàng', 5], ['Khách hẹn lại giờ lấy', 3], ['Quá tải tuyến thu', 2], ['Sai địa chỉ lấy hàng', 1.2]];
     var custs = [['Shop TMĐT', 6], ['Doanh nghiệp', 3], ['Cá nhân', 2]];
-    var svcTotal = services.reduce(function (s, x) { return s + x[1]; }, 0);
-
-    var start = new Date(2026, 6, 1), end = new Date(2026, 8, 30), first = true, idx = 0;
-    for (var day = start; day <= end; day = addDays(day, 1), idx++) {
-      if (dkey(day) === '2026-09-02') continue; // nghỉ lễ Quốc khánh: không có file
-      var weekend = day.getDay() === 0 || day.getDay() === 6;
-      var tq = [['Ngày', 'Bưu cục', 'Sản lượng phát', 'Phát thành công', 'Tồn phát', 'Sản lượng thu', 'Thu thành công', 'Tồn thu']];
-      var tp = [['Mã bưu gửi', 'Ngày nhận', 'Bưu cục phát', 'Dịch vụ', 'Lý do tồn', 'Số ngày tồn', 'Cước (đ)']];
-      var tt = [['Mã yêu cầu', 'Ngày yêu cầu', 'Bưu cục thu', 'Nhóm khách hàng', 'Lý do tồn', 'Số ngày tồn']];
-      var tc = [['Ngày', 'Bưu cục', 'Dịch vụ', 'Loại', 'Sản lượng', 'Thành công', 'Đúng chỉ tiêu']];
-      units.forEach(function (u) {
-        var lb = u[0] === 'Long Biên' && day.getMonth() === 8;
-        var sp = Math.round(470 * u[1] * (weekend ? 0.75 : 1) * (0.88 + rnd() * 0.24) * (1 + idx * 0.002));
-        var ptc = Math.round(sp * (lb ? 0.88 + rnd() * 0.04 : 0.94 + rnd() * 0.04));
-        var st = Math.round(260 * u[1] * (weekend ? 0.6 : 1) * (0.85 + rnd() * 0.3));
-        var ttc = Math.round(st * (0.95 + rnd() * 0.04));
-        tq.push([dayStr(day), u[0], sp, ptc, sp - ptc, st, ttc, st - ttc]);
-        for (var a = 0; a < sp - ptc; a++) {
-          var age = Math.min(12, Math.floor(-Math.log(1 - rnd() * 0.999) * (lb ? 3 : 1.8))) + 1;
-          var svc = weighted(services);
-          var recv = addDays(day, -age);
-          tp.push(['EB' + digits(9) + 'VN', dayStr(recv) + ' ' + pad(7 + Math.floor(rnd() * 11)) + ':' + pad(Math.floor(rnd() * 60)), u[0], svc, weighted(reasonsP), age,
-            Math.round((svc === 'Thư thường' ? 9000 : 18000 + rnd() * 52000) / 500) * 500]);
-        }
-        for (var b = 0; b < st - ttc; b++) {
-          var age2 = Math.min(8, Math.floor(-Math.log(1 - rnd() * 0.999) * 1.4)) + 1;
-          var req = addDays(day, -age2);
-          tt.push(['YC' + digits(7), dayStr(req) + ' ' + pad(8 + Math.floor(rnd() * 9)) + ':' + pad(Math.floor(rnd() * 60)), u[0], weighted(custs), weighted(reasonsT), age2]);
-        }
-        var leftP = sp, leftPT = ptc, leftT = st, leftTT = ttc;
-        services.forEach(function (sv2, si) {
-          var lastSvc = si === services.length - 1;
-          var share = sv2[1] / svcTotal;
-          var p1 = lastSvc ? leftP : Math.round(sp * share), p2 = lastSvc ? leftPT : Math.min(p1, Math.round(ptc * share));
-          var t1 = lastSvc ? leftT : Math.round(st * share), t2 = lastSvc ? leftTT : Math.min(t1, Math.round(ttc * share));
-          leftP -= p1; leftPT -= p2; leftT -= t1; leftTT -= t2;
-          tc.push([dayStr(day), u[0], sv2[0], 'Phát', p1, p2, Math.round(p2 * (lb ? 0.8 : 0.9 + rnd() * 0.07))]);
-          tc.push([dayStr(day), u[0], sv2[0], 'Thu', t1, t2, Math.round(t2 * (0.92 + rnd() * 0.06))]);
-        });
+    var eb = 1, yc = 1, pendP = [], pendT = [];
+    var addFile = function (folder, prefix, day, aoa) {
+      var name = prefix + '_' + pad(day.getDate()) + '-' + pad(day.getMonth() + 1) + '-' + day.getFullYear() + '.xlsx';
+      var table = buildTable(aoa);
+      stripTable(table);
+      var dd = detectDate(name, [{ name: 'Sheet1', table: table }], day.getTime());
+      FILES.set(folder + '/' + name, {
+        path: folder + '/' + name, dataset: folder, name: name, size: 0, lastModified: day.getTime() + 20 * 3600e3,
+        tables: [{ sheet: 'Sheet1', table: table }], warn: [], error: null, dateKey: dkey(dd.d), dateSrc: dd.src
       });
-      var pages = [
-        { name: 'Tổng quan', table: buildTable(tq) },
-        { name: 'Tồn phát', table: buildTable(tp) },
-        { name: 'Tồn thu', table: buildTable(tt) },
-        { name: 'Thu/phát thành công', table: buildTable(tc) }
-      ];
-      if (first) {
-        pages.forEach(function (p) {
-          var t = draftTemplate(p.name, p.table);
-          if (p.name === 'Thu/phát thành công') {
-            t.tyLe = [{ ten: 'Tỷ lệ thành công', tu: 'Thành công', mau: 'Sản lượng' }, { ten: 'Tỷ lệ đúng chỉ tiêu', tu: 'Đúng chỉ tiêu', mau: 'Thành công' }];
-          }
-          DB.config.sheets[p.name] = storedTemplate(t);
-        });
-        first = false;
-      }
-      var sheets = {};
-      pages.forEach(function (p) { sheets[p.name] = normalizeSheet(p.table, DB.config.sheets[p.name]); });
-      var ddmmyyyy = pad(day.getDate()) + pad(day.getMonth() + 1) + day.getFullYear();
-      await saveDay(dkey(day), 'BaoCaoNgay_' + ddmmyyyy + '.xlsx', null, sheets);
+    };
+    for (var day = new Date(2026, 7, 1); day <= new Date(2026, 8, 30); day = addDays(day, 1)) {
+      if (dkey(day) === '2026-09-02') continue; // Quốc khánh: không có tệp
+      var weekend = day.getDay() === 0 || day.getDay() === 6;
+      units.forEach(function (u) {
+        var nP = Math.round(62 * u[1] * (weekend ? 0.7 : 1) * (0.85 + rnd() * 0.3));
+        for (var i = 0; i < nP; i++) {
+          pendP.push({ ma: 'EB' + String(eb++).padStart(9, '0') + 'VN', unit: u[0], svc: weighted(services), recv: new Date(day.getFullYear(), day.getMonth(), day.getDate(), 6 + Math.floor(rnd() * 10), Math.floor(rnd() * 60)), bt: u[2] + '-BT0' + (1 + Math.floor(rnd() * 4)), fresh: true });
+        }
+        var nT = Math.round(30 * u[1] * (weekend ? 0.6 : 1) * (0.85 + rnd() * 0.3));
+        for (var j = 0; j < nT; j++) {
+          pendT.push({ ma: 'YC' + String(yc++).padStart(7, '0'), unit: u[0], cust: weighted(custs), req: new Date(day.getFullYear(), day.getMonth(), day.getDate(), 7 + Math.floor(rnd() * 9), Math.floor(rnd() * 60)), fresh: true });
+        }
+      });
+      var noUnitDay = dkey(day) === '2026-09-15';
+      var ptc = [noUnitDay ? ['Mã bưu gửi', 'Thời gian phát', 'Bưu tá'] : ['Mã bưu gửi', 'Thời gian phát', 'Bưu cục phát', 'Bưu tá']];
+      var tonP = [['Mã bưu gửi', 'Ngày nhận', 'Bưu cục phát', 'Dịch vụ', 'Lý do tồn', 'Số ngày tồn']];
+      var tonRow = function (it) {
+        return [it.ma, dtstr(it.recv, it.recv.getHours()), it.unit, it.svc, it.reason, Math.max(1, daysBetween(new Date(it.recv.getFullYear(), it.recv.getMonth(), it.recv.getDate()), day))];
+      };
+      var keepP = [];
+      pendP.forEach(function (it) {
+        var lb = it.unit === 'Long Biên' && day.getMonth() === 8;
+        var p = it.fresh ? (lb ? 0.55 : 0.72) : (lb ? 0.5 : 0.8);
+        if (rnd() < p) {
+          ptc.push(noUnitDay ? [it.ma, dtstr(day, 8 + Math.floor(rnd() * 11)), it.bt] : [it.ma, dtstr(day, 8 + Math.floor(rnd() * 11)), it.unit, it.bt]);
+          if (!it.fresh && rnd() < 0.01) { if (!it.reason) it.reason = weighted(reasonsP); tonP.push(tonRow(it)); }
+        } else if (!it.fresh && rnd() < 0.012) {
+          /* chuyển hoàn: rời danh sách tồn, không phát thành công */
+        } else {
+          it.fresh = false;
+          if (!it.reason) it.reason = weighted(reasonsP);
+          keepP.push(it);
+        }
+      });
+      pendP = keepP;
+      pendP.forEach(function (it) { tonP.push(tonRow(it)); });
+      var ttc = [['Mã yêu cầu', 'Thời gian thu', 'Bưu cục thu']];
+      var tonT = [['Mã yêu cầu', 'Ngày yêu cầu', 'Bưu cục thu', 'Nhóm khách hàng', 'Lý do tồn', 'Số ngày tồn']];
+      var keepT = [];
+      pendT.forEach(function (it) {
+        if (rnd() < (it.fresh ? 0.8 : 0.85)) ttc.push([it.ma, dtstr(day, 9 + Math.floor(rnd() * 9)), it.unit]);
+        else {
+          it.fresh = false;
+          if (!it.reason) it.reason = weighted(reasonsT);
+          keepT.push(it);
+        }
+      });
+      pendT = keepT;
+      pendT.forEach(function (it) {
+        tonT.push([it.ma, dtstr(it.req, it.req.getHours()), it.unit, it.cust, it.reason, Math.max(1, daysBetween(new Date(it.req.getFullYear(), it.req.getMonth(), it.req.getDate()), day))]);
+      });
+      addFile('PhatThanhCong', 'PhatThanhCong', day, ptc);
+      addFile('TonPhat', 'TonPhat', day, tonP);
+      addFile('ThuThanhCong', 'ThuThanhCong', day, ttc);
+      if (dkey(day) !== '2026-09-21') addFile('TonThu', 'TonThu', day, tonT); // quên xuất tệp ngày 21/09
     }
-    await saveConfig();
-    await saveIndex();
+    buildDatasets();
+    Object.keys(CFG.datasets).forEach(function (id) { CFG.datasets[id].xacNhan = true; });
   }
 
   /* ================================================================
      Events
      ================================================================ */
-  $('pickBtn').addEventListener('click', onPick);
-  $('fileInput').addEventListener('change', function (e) { var f = e.target.files; startImport(f).then(function () { e.target.value = ''; }); });
+  $('pickBtn').addEventListener('click', doUpdate);
+  $('fileInput').addEventListener('change', function (e) { var f = e.target.files; onPicked(f).then(function () { e.target.value = ''; }); });
+  $('dirInput').addEventListener('change', function (e) { var f = e.target.files; onPicked(f).then(function () { e.target.value = ''; }); });
   document.addEventListener('click', function (e) {
-    var t = e.target.closest('[data-act="choose-folder"]');
-    if (t) { if (REMEMBERED) reopenRemembered(); else chooseFolder(); }
-  });
-  $('importSave').addEventListener('click', saveImport);
-  $('importCancel').addEventListener('click', function () {
-    IMP = null; showError('');
-    var names = sheetNames();
-    if (names.length) showSheet(names[0]); else showStorage();
+    if (e.target.closest('[data-act="link-folder"]')) linkFolder();
   });
 
   var dragDepth = 0;
@@ -2652,9 +2869,7 @@
   window.addEventListener('drop', function (e) {
     e.preventDefault();
     dragDepth = 0; $('dropOverlay').hidden = true;
-    if (!e.dataTransfer || !e.dataTransfer.files.length) return;
-    if (DB.store.sample) { notice('Đang xem dữ liệu mẫu. Hãy chọn thư mục lưu dữ liệu trước, sau đó kéo thả file lại.'); return; }
-    startImport(e.dataTransfer.files);
+    if (e.dataTransfer && e.dataTransfer.files.length) onPicked(e.dataTransfer.files);
   });
 
   Array.prototype.forEach.call($('periodSeg').children, function (b) {
@@ -2688,11 +2903,12 @@
   $('sumDimSel').addEventListener('change', function (e) { var st = sv(); st.sumDim = e.target.value; st.sumSort = null; renderData(); });
   Array.prototype.forEach.call($('sumOpts').querySelectorAll('input'), function (i) {
     i.addEventListener('change', function () {
-      DB.config.tuyChonBang[i.dataset.opt] = i.checked;
+      CFG.tuyChonBang[i.dataset.opt] = i.checked;
       renderSummary(applyFilters(DATA.rows, false), applyFilters(DATA.prevRows, false));
-      saveConfig().catch(function () { /* the option still applies for this session */ });
+      saveCfg();
     });
   });
+  $('recSel').addEventListener('change', renderRecList);
   $('detailFold').addEventListener('toggle', function () { if ($('detailFold').open && DATA) renderDetail(); });
   var qTimer = null;
   $('searchInput').addEventListener('input', function (e) {
@@ -2725,27 +2941,33 @@
     }).observe($('colBox'));
   }
 
-  /* ---------- Start ---------- */
+  /* ---------- Start: show what was read last time; reading the folder again needs a click ---------- */
   async function init() {
-    var h = folderSupported() ? await kvGet('root') : null;
-    if (h) {
-      try {
-        var p = await h.queryPermission({ mode: 'readwrite' });
-        if (p === 'granted') { await openStore(new FolderStore(h)); afterOpen(); return; }
-        REMEMBERED = h;
-      } catch (e) { REMEMBERED = null; }
+    var saved = await kvGet('source');
+    var recs = await filesAll();
+    if (folderSupported()) ROOT = await kvGet('root');
+    if (saved && saved.mode !== 'sample' && recs && recs.length) {
+      CFG = Object.assign(emptyCfg(), (await kvGet('config')) || {});
+      FILES = new Map(recs.map(function (r) { return [r.path, r]; }));
+      SRC.mode = saved.mode === 'folder' && !ROOT ? 'files' : saved.mode;
+      SRC.name = saved.name; SRC.lastUpdate = saved.lastUpdate; SRC.report = saved.report;
+      buildDatasets();
+      afterLoad(false);
+      return;
     }
     await loadSample();
-    afterOpen();
-    if (REMEMBERED) {
-      var btn = $('sampleBanner').querySelector('[data-act="choose-folder"]');
-      btn.textContent = 'Mở lại thư mục “' + REMEMBERED.name + '”';
-    }
+    afterLoad(false);
   }
-  /* Test hook: open any directory handle (used for automated checks with the browser's private folder) */
-  window.DHCL = { openHandle: async function (h) { await openStore(new FolderStore(h)); afterOpen(dayKeys().length ? null : { storage: true }); } };
+  /* Test hook: link any directory handle (used for automated checks with the browser's private folder) */
+  window.DHCL = {
+    linkHandle: async function (h) {
+      await resetData();
+      ROOT = h; SRC.mode = 'folder'; SRC.name = h.name || 'Thư mục thử';
+      await runFolderScan(h);
+    }
+  };
 
-  init().catch(function (e) { showError('Không khởi động được: ' + (e && e.message ? e.message : e)); });
+  init().catch(function (e) { progress(''); showError('Không khởi động được: ' + (e && e.message ? e.message : e)); });
 })();
 </script>
 </body>
