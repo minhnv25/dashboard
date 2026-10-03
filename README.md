@@ -1,42 +1,57 @@
 # Điều hành chất lượng
 
-Web app một trang: tải file dữ liệu lên là có dashboard ngay. Mọi xử lý diễn ra trong trình duyệt, file không được gửi lên máy chủ nào.
+Web app một trang để theo dõi chất lượng các bưu cục. Mỗi ngày tải file xuất từ hệ thống lên, app lưu vào một thư mục trên máy và cho xem số liệu theo ngày, tuần, tháng, quý hoặc lũy kế năm.
 
-## Bố cục
+## Cách dùng
 
-- Máy tính, laptop, máy tính bảng (rộng từ 768px): cột điều hướng hẹp bên trái, phần nội dung lớn bên phải.
-- Điện thoại: điều hướng thu thành dải tab cuộn ngang phía trên.
-- Mỗi mục điều hướng là một trang tính (sheet) trong file Excel, hoặc một file CSV/JSON. Chọn được nhiều file một lúc.
-- Mỗi mục gồm: hàng bộ lọc (tối đa 6 cột nhóm + Thời gian), 4 ô chỉ số, biểu đồ tròn cơ cấu, biểu đồ cột theo thời gian (hoặc so sánh nhóm nếu không có cột ngày), bảng chi tiết.
+1. Mở `index.html` bằng **Microsoft Edge hoặc Google Chrome trên máy tính** (Firefox, Safari và trình duyệt trên điện thoại/máy tính bảng chưa hỗ trợ ghi thư mục).
+2. Bấm **Chọn thư mục lưu dữ liệu**, chọn một thư mục riêng, ví dụ `D:\DieuHanhChatLuong` hoặc một thư mục trong OneDrive để có bản sao trên cloud. Trình duyệt hỏi quyền đọc ghi, bấm cho phép.
+3. Bấm **Tải dữ liệu**, chọn file xuất từ hệ thống (Excel, CSV hoặc JSON, chọn được nhiều file một lúc).
+4. Kiểm tra màn hình **Kiểm tra trước khi lưu** rồi bấm Lưu.
 
-## Định dạng hỗ trợ
+Lần sau mở app, trình duyệt nhớ thư mục; chỉ cần bấm "Mở lại thư mục" để cấp lại quyền.
 
-- CSV / TSV / TXT (tự nhận dấu phân cách `,` `;` tab `|`, UTF-8 có hoặc không BOM)
-- Excel `.xlsx`, `.xlsm`, `.xls`, `.ods` (chọn được trang tính nếu file có nhiều sheet)
-- JSON (mảng object, mảng mảng, hoặc object chứa một mảng)
+## Cách lưu trên đĩa
 
-File xuất từ app Trạm Quét Mã (repo `leonard/quetma`) đọc được trực tiếp.
+```
+<thư mục đã chọn>/
+├─ cau-hinh.json        mẫu nhận diện từng sheet: vai trò từng cột, cách tính, tỷ lệ
+├─ danh-muc.json        danh sách các ngày đã lưu
+├─ goc/2026-09/         file gốc, giữ nguyên: "2026-09-29 - BaoCaoNgay_29-09-2026.xlsx"
+└─ du-lieu/2026-09/     bản đã chuẩn hóa theo ngày: "2026-09-29.json"
+```
 
-## Dashboard tự dựng những gì
+- Tải lại cùng một ngày thì ghi đè ngày đó (file gốc cũ của ngày đó bị thay).
+- `du-lieu/*.json` là văn bản thường, mỗi dòng dữ liệu một dòng, mở được bằng Notepad.
+- Mất `danh-muc.json` thì vào **Dữ liệu đã lưu → Quét lại thư mục** để dựng lại từ `du-lieu/`.
 
-- Nhận diện kiểu từng cột: số, ngày giờ, nhóm, văn bản, mã định danh.
-  - Số kiểu Việt Nam (`1.250.000`, `12,5`) và kiểu Anh (`1,250,000`, `12.5`) được nhận theo từng cột.
-  - Ngày `dd/mm/yyyy`, `yyyy-mm-dd`, có hoặc không kèm giờ, và dạng `HH:mm:ss d/m/yyyy` mà trình duyệt tiếng Việt xuất ra.
-  - Cột mã vạch, mã đơn, số điện thoại không bị cộng dồn như số.
-- Ô chỉ số: số dòng, tổng và trung bình của tối đa 3 cột số, khoảng thời gian.
-- Biểu đồ thanh theo nhóm (top 10, phần còn lại gộp vào "Khác"), chọn được cột nhóm và phép tính (số dòng, tổng, trung bình). Nhấn vào thanh để lọc.
-- Biểu đồ theo thời gian, tự chọn mốc giờ / ngày / tháng / năm theo độ dài dữ liệu.
-- Bộ lọc chung: khoảng thời gian (tính từ ngày cuối cùng trong file), lọc theo giá trị một cột, tìm kiếm toàn văn.
-- Bảng dữ liệu sắp xếp được, phân trang; bảng cấu trúc file.
+## Cách app hiểu file
 
-## Chạy
+- **Ngày dữ liệu**: lấy từ tên tệp (`29-09-2026`, `2026-09-29`, `29092026`), nếu không có thì lấy ngày lớn nhất trong các cột ngày, sửa được trước khi lưu.
+- **Mỗi sheet** là một mục ở cột trái, nhận theo tên sheet. File CSV/JSON dùng tên tệp đã bỏ phần ngày.
+- **Kiểu sheet**: số phát sinh trong ngày, hoặc số dư tại thời điểm (danh sách tồn).
+- **Vai trò cột**:
 
-Mở thẳng `index.html` bằng trình duyệt là dùng được. Cần mạng lần đầu để tải thư viện đọc Excel (SheetJS từ cdnjs); CSV và JSON không cần thư viện.
+| Vai trò | Khi xem nhiều ngày |
+|---|---|
+| Chỉ tiêu cộng dồn | Tổng các ngày, kèm trung bình/ngày |
+| Chỉ tiêu số dư (tồn) | Số của ngày cuối kỳ, kèm bình quân/ngày. Không cộng dồn |
+| Chỉ tiêu tính trung bình | Trung bình trên các dòng, kèm giá trị lớn nhất |
+| Tỷ lệ (tự khai báo) | Tổng tử số / tổng mẫu số của cả kỳ × 100 |
+| Bưu cục | Đơn vị để tổng hợp và lọc |
+| Nhóm để lọc, Mã định danh, Ngày giờ, Ghi chú, Bỏ qua | Lọc, đếm, hiển thị hoặc không lưu |
 
-Muốn có link dùng chung: bật GitHub Pages cho repo (Settings → Pages → Deploy from branch, thư mục gốc).
+Lần đầu gặp một sheet, app đoán vai trò theo kiểu dữ liệu và tên cột. Bạn sửa và lưu thì mẫu được ghi vào `cau-hinh.json`; các ngày sau tự áp dụng và báo nếu file thiếu cột hoặc có cột mới.
 
-## Giới hạn đã biết
+## Xem theo kỳ
 
-- Số có dạng mơ hồ như `1.234` (không rõ là nghìn hay thập phân) được hiểu theo kiểu Việt Nam, tức 1234, trừ khi các giá trị khác trong cột cho thấy cột dùng kiểu Anh.
-- Ngày `a/b/yyyy` mặc định là ngày/tháng; chỉ chuyển sang tháng/ngày khi trong cột có giá trị mà phần thứ hai lớn hơn 12.
-- Dữ liệu nằm trong bộ nhớ trình duyệt; file vài trăm nghìn dòng vẫn chạy nhưng sẽ chậm.
+Ngày, tuần (thứ Hai đến Chủ nhật), tháng, quý, lũy kế năm, hoặc khoảng tùy chọn. Mỗi kỳ so với kỳ trước (lũy kế năm so với cùng kỳ năm trước). Bảng **Tổng hợp theo bưu cục** có cột tổng/cuối kỳ và tùy chọn thêm: trung bình/ngày, ngày cao nhất, ngày thấp nhất, kỳ trước, % thay đổi. Ngày thiếu dữ liệu được báo ở thanh chọn kỳ và đánh dấu vàng trên biểu đồ.
+
+## Thư viện
+
+`vendor/xlsx.full.min.js` là SheetJS Community Edition 0.18.5 (Apache 2.0, xem `vendor/xlsx.LICENSE`), để app đọc Excel không cần mạng. Nếu thiếu tệp này, app tự tải từ cdnjs.
+
+## Việc tiếp theo
+
+- Tạo báo cáo tuần/tháng/quý cho Ban Giám đốc: xuất PDF và PowerPoint chỉnh sửa được.
+- Cảnh báo đỏ theo ngưỡng.
